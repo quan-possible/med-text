@@ -8,35 +8,53 @@ import os
 import logging
 from pathlib import Path
 import random
-
+from math import isclose
 
 class HoC(object):
 
-
-    def __init__(self, source_dir, target_dir):
+    def __init__(self, source_dir, target_dir, split=None):
         """
         source_dir: str or posix path. source directory of raw data
         target_dir: str or posix path. target directory to save split data
+        split: tuple(int,int,int). train/val/test split proportions
         """
+        assert isclose(sum(split), 1.0), "split proportions do not add up to 1."
+        
         self.source_dir = Path(source_dir) if type(
             source_dir) is str else source_dir
         self.target_dir = Path(target_dir) if type(
             target_dir) is str else target_dir
+        self.split = split
 
         self.texts = self.read_texts(self.source_dir / 'text')
         self.labels = self.read_labels(self.source_dir / 'labels')
         
         target_files = set(
             [e.name for e in self.target_dir.iterdir() if e.is_file()])
-        if not set(['hoc.csv']).issubset(target_files):
-            self.save_csv(self.texts, self.labels, self.target_dir)
         
+        # check if there is existing file and split proportions
+        if not set(['train.csv', 'val.csv', 'test.csv']) \
+            .issubset(target_files) and split:
+            self.split_and_save(self.texts, self.labels, self.target_dir, self.split)
+        elif not set(['hoc.csv']).issubset(target_files):
+            self.save_csv(self.texts, self.labels, self.target_dir)
+            
+    def split_and_save(self, texts, labels, target_dir, split):
+        pd.DataFrame(np.array([texts[:int(len(texts) * split[0])],
+                               labels[:int(len(texts) * split[0])]]).T,
+                     columns=['TEXT', 'LABEL']).to_csv(target_dir / 'hoc_train.csv', sep='\t')
+        pd.DataFrame(np.array([texts[:int(len(texts) * split[1])], 
+                               labels[:int(len(texts) * split[1])]]).T, 
+                     columns=['TEXT', 'LABEL']).to_csv(target_dir / 'hoc_val.csv', sep='\t')
+        pd.DataFrame(np.array([texts[:int(len(texts) * split[2])], 
+                               labels[:int(len(texts) * split[2])]]).T, 
+                     columns=['TEXT', 'LABEL']).to_csv(target_dir / 'hoc_test.csv', sep='\t')
+    
     def save_csv(self, texts, labels, target_dir):
         logging.info("Saving data...")
         pd.DataFrame(np.array([texts, labels]).T, columns=[
                      'TEXT', 'LABEL']).to_csv(target_dir / 'hoc.csv', sep='\t')
-        
-    @staticmethod
+
     def read_texts(text_dir):
         files = [x for x in text_dir.iterdir() if x.is_file()]
         texts = []
@@ -46,7 +64,6 @@ class HoC(object):
 
         return texts
 
-    @staticmethod
     def read_labels(label_dir):
         label_files = [x for x in label_dir.iterdir() if x.is_file()]
         all_labels = []
@@ -104,18 +121,17 @@ class HoC(object):
 
     """ DEPRECATED """
 
-    #
     # def save_csv(self, target_dir):
     #     self.read_texts()
     #     self.read_labels()
-    #     pd.DataFrame(np.array([self.train_arr, self.train_lbl]).T, columns=[
+    #     pd.DataFrame(np.array([texts, labels]).T, columns=[
     #                  'TEXT', 'LABEL']).to_csv('./data/hoc.csv', sep='\t')
-    #     pd.DataFrame(np.array([self.train_arr[:int(len(self.train_arr)*0.2)], self.train_lbl[:int(
-    #         len(self.train_arr)*0.2)]]).T, columns=['TEXT', 'LABEL']).to_csv('./data/hoc_test.csv', sep='\t')
-    #     pd.DataFrame(np.array([self.train_arr[:int(len(self.train_arr)*0.1)], self.train_lbl[:int(
-    #         len(self.train_arr)*0.1)]]).T, columns=['TEXT', 'LABEL']).to_csv('./data/hoc_val.csv', sep='\t')
+    #     pd.DataFrame(np.array([texts[:int(len(texts)*0.2)], labels[:int(
+    #         len(texts)*0.2)]]).T, columns=['TEXT', 'LABEL']).to_csv('./data/hoc_test.csv', sep='\t')
+    #     pd.DataFrame(np.array([texts[:int(len(texts)*0.1)], labels[:int(
+    #         len(texts)*0.1)]]).T, columns=['TEXT', 'LABEL']).to_csv('./data/hoc_val.csv', sep='\t')
 
 
 if __name__ == "__main__":
     # testing
-    hoc = HoC("./project/data/HoC", "./project/data")
+    hoc = HoC("./project/data/HoC", "./project/data", (0.7,0.15,0.15))

@@ -11,7 +11,7 @@ import logging
 
 class MTC(object):
     
-    def __init__(self, source_dir, target_dir):
+    def __init__(self, source_dir, target_dir, split=None):
         """
         source_dir: str or posix path. source directory of raw data
         target_dir: str or posix path. target directory to save split data
@@ -26,8 +26,12 @@ class MTC(object):
         
         target_files = set(
             [e.name for e in self.target_dir.iterdir() if e.is_file()])
-        if not set(['mtc.csv']).issubset(target_files):
-            self.save_csv(self.texts, self.labels)
+        
+        if not set(['train.csv', 'val.csv', 'test.csv']) \
+            .issubset(target_files) and split:
+            self.split_and_save(self.texts, self.labels, self.target_dir, self.split)
+        elif not set(['hoc.csv']).issubset(target_files):
+            self.save_csv(self.texts, self.labels, self.target_dir)
     
     def preprocess_text(self, texts):
         texts_filtered = self._filterLen(
@@ -35,6 +39,19 @@ class MTC(object):
         texts_processed = self._text_preprocess(texts_filtered)
         
         return texts_processed
+    
+    def split_and_save(self, texts, labels, target_dir, split):
+        assert split != None, "No split proportions available."
+
+        pd.DataFrame(np.array([texts[:int(len(texts) * split[0])],
+                               labels[:int(len(texts) * split[0])]]).T,
+                     columns=['TEXT', 'LABEL']).to_csv(target_dir / 'hoc_train.csv', sep='\t')
+        pd.DataFrame(np.array([texts[:int(len(texts) * split[1])],
+                               labels[:int(len(texts) * split[1])]]).T,
+                     columns=['TEXT', 'LABEL']).to_csv(target_dir / 'hoc_val.csv', sep='\t')
+        pd.DataFrame(np.array([texts[:int(len(texts) * split[2])],
+                               labels[:int(len(texts) * split[2])]]).T,
+                     columns=['TEXT', 'LABEL']).to_csv(target_dir / 'hoc_test.csv', sep='\t')
     
     def save_csv(self, texts, labels):
         logging.info("Saving data...")
