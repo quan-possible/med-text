@@ -122,18 +122,21 @@ class DataModule(pl.LightningDataModule):
             num_workers=self.loader_workers,
         )
     
-    def _read_csv(self, data_path: str, txt_col_name="TEXT",
+    @staticmethod
+    def read_csv(file_path: str, txt_col_name="TEXT",
                   lbl_col_name="LABEL") -> list:
         """ Reads a comma separated value file.
 
         :param path: path to a csv file.
         
-        :return: List of records as dictionaries
+        :return: 
+            - List of records as dictionaries
+            - Number of classes
         """
-        df = pd.read_csv(data_path, sep='\t', index_col=0,)
+        df = pd.read_csv(file_path, sep='\t', index_col=0,)
         df['text'] = df[txt_col_name].astype(str)
         df['labels'] = df[lbl_col_name]
-        self.n_classes = len(df['labels'].unique())
+        
         return df[['text','labels']].to_dict("records")
 
     @staticmethod

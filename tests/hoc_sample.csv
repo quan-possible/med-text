@@ -1,0 +1,118 @@
+text,labels
+"Ghrelin was identified in the stomach as an endogenous ligand specific for the growth hormone secretagogue receptor ( GHS-R ) .
+GHS-R is found in various tissues , but its function is unknown .
+Here we show that GHS-R is found in hepatoma cells .
+Exposure of these cells to ghrelin caused up-regulation of several insulin-induced activities including tyrosine phosphorylation of insulin receptor substrate-1 ( IRS-1 ) , association of the adapter molecule growth factor receptor-bound protein 2 with IRS-1 , mitogen-activated protein kinase activity , and cell proliferation .
+Unlike insulin , ghrelin inhibited Akt kinase activity as well as up-regulated gluconeogenesis .
+These findings raise the possibility that ghrelin modulates insulin activities in humans .
+",33
+"Leptin is thought to be involved in febrigenic signaling from the periphery to the brain .
+Zucker obese rats have a so-called fatty mutation in the leptin receptor gene and express a dysfunctional protein .
+Studies comparing the fever responses of fatty ( fa/fa ) rats and of their lean ( Fa/Fa and Fa/fa ) counterparts yield contradictory results .
+To resolve these contradictions , we evaluated the effect of fatty mutation on infectious and stress-associated fevers at thermoneutrality ( 29 degrees C ) and in a cool environment ( 20 degrees C ) .
+Zucker fa/fa and Fa/ ? rats were infused with Escherichia coli lipopolysaccharide ( LPS ; 10 microg/kg ) through a jugular catheter ( infectious fever ) or with saline through the catheter ( control ) or received a painful intramuscular injection of saline ( stress fever ) .
+At thermoneutrality , the colonic temperature ( T(c) ) responses of fatty rats to all stimuli tested were no different from the responses of lean rats .
+In a cool environment , T(c) responses of fatty rats to all stimuli were degrees C lower than those of lean rats .
+The observed attenuation of LPS-induced and stress-associated fevers in Zucker fatty rats in the cold agrees with the literature data showing that brown adipose tissue ( the major heat production effector ) is morphologically and functionally defective in these rats .
+The normal febrile responses of fatty Zucker rats to pyrogenic stimuli at thermoneutrality indicate that fatty mutation does not interrupt febrigenic signaling from the periphery to the brain .
+",0
+"PURPOSE The epidermal growth factor receptor ( EGFR ) tyrosine kinase inhibitor ZD1839 ( Iressa ; AstraZeneca Pharmaceuticals , Alderley Park , United Kingdom ) is under development as an anticancer agent .
+We studied the pharmacodynamic effects of ZD1839 on EGFR in the skin , an EGFR-dependent tissue , in cancer patients participating in ZD1839 phase I clinical trials .
+PATIENTS AND METHODS We studied 104 pre- and/or on-ZD1839 therapy ( approximately at day 28 of therapy ) skin biopsies from 65 patients receiving escalating doses of daily oral ZD1839 .
+We measured ZD1839 effects on EGFR activation by immunohistochemistry using an antibody specific for the activated ( phosphorylated ) EGFR .
+Effects on receptor signaling ( activated mitogen-activated protein kinase [ MAPK] ) , proliferation , p27(KIP1) , and maturation were also assessed .
+RESULTS Histopathologically , the stratum corneum of the epidermis was thinner during therapy ( P <.001 ) .
+In hair follicles , prominent keratin plugs and microorganisms were found in dilated infundibula .
+ZD1839 suppressed EGFR phosphorylation in all EGFR-expressing cells ( P <.001 ) .
+In addition , ZD1839 inhibited MAPK activation ( P <.001 ) and reduced keratinocyte proliferation index ( P <.001 ) .
+Concomitantly , ZD1839 increased the expression of p27(KIP1) ( P <.001 ) and maturation markers ( P <.001 ) and increased apoptosis ( P <.001 ) .
+These effects were observed at all dose levels , before reaching dose-limiting toxicities .
+CONCLUSION ZD1839 inhibits EGFR activation and affects downstream receptor-dependent processes in vivo .
+These effects were profound at doses well below the one producing unacceptable toxicity , a finding that strongly supports pharmacodynamic assessments to select optimal doses instead of a maximum-tolerated dose for definitive efficacy and safety trials .
+",1
+"Adoptive transfer of immunity against hepatitis B surface antigen ( HBsAg ) was previously shown to facilitate suppression of experimental human hepatocellular carcinoma ( HCC ) expressing HBsAg in athymic mice .
+We have shown that oral tolerance induces antigen-specific immune suppression of HBsAg by feeding hepatitis B virus ( HBV ) antigens .
+In the present study we evaluated the effect of oral tolerance induction toward HBV or HCC antigens on the growth of experimental HCC-expressing HBsAg in mice .
+Tolerance induction was induced in mice by 5 oral feedings of 1 microg HBV antigens or HCC-extracted proteins ( 50 microg protein ) before vaccination with recombinant HBsAg .
+Splenocytes ( 2 x 10(6) ) from these mice were transferred to sublethally irradiated athymic BALB/c mice previously transplanted subcutaneously with 10(7) human hepatoma Hep3B cells .
+Adoptive transfer of splenocytes immunized toward HBsAg prevented tumor growth .
+At 4 weeks after splenocyte transplantation , tumor volume and serum alpha-fetoprotein ( AFP ) levels in athymic mice transplanted with splenocytes immunized to HBsAg were undetectable as compared with 1,048 +/- 738 mm(3) and 2,500 +/- 1,431 ng/ml in recipients of na�ve splenocytes ( p < 0.0001 ) .
+Mice receiving splenocytes tolerized toward Hep3B cells , as manifested by reduced serum HBs antibody levels , reduced HBV-specific stimulation index and reduced HBV-specific-IFN gamma spot-forming cells , had early tumor growth evident by elevated AFP serum levels , weight loss and mortality , which were suppressed at 6 weeks .
+Mice transplanted with splenocytes tolerized toward HBV antigens did not have direct evidence of tumor growth .
+Induction of oral tolerance toward HCC-extracted proteins enabled transient tumor growth in this model .
+This effect was mediated through downregulation of the anti-HBV immune response .
+",2
+"The secretion of immunosuppressive factors like transforming growth factor-beta ( TGF-beta ) by tumor cells has been recognized as one of the mechanisms involved in tumor immunological escape .
+This study aimed to examine whether dendritic cell ( DC ) immunization could reverse TGF-beta-induced immunosuppression by simulating the in vivo interaction among infused DCs , host T cells , and tumor-secreted TGF-beta in an in vitro study .
+We found that both immature and mature DCs were relatively resistant to TGF-beta .
+The addition of TGF-beta to naive human CD4+ T cells , which are required by genetically modified DC to elicit antitumor immunity , resulted in their hyporesponsiveness to DC stimulation in a dose-dependent manner .
+When activated by allogeneic DCs in the presence of TGF-beta , CD4+ T cells displayed a reduced capacity to proliferate .
+More importantly , activated CD4+ T cells induced by DC stimulation were very sensitive to TGF-beta , and this susceptibility was enhanced by their previous exposure to TGF-beta .
+The underlying mechanism was linked to TGF-beta-induced apoptosis of activated T cells .
+However , the presence of stimulation from DC or antibodies to CD3 plus CD28 could partly reverse the immunosuppressive effect of TGF-beta on activated CD4+ T cells .
+Taken together , our results indicate that the efficacy of DC immunization may be impaired by tumor-derived TGF-beta .
+",28
+"To characterize the impact of increased production of TGF-beta in a xenograft model of human breast cancer , TGF-beta-responsive MDA-231 cells were genetically modified by stable transfection so as to increase their production of active TGF-beta1 .
+Compared with control cells , cells that produced increased amounts of TGF-beta proliferated in vitro more slowly .
+In vivo , however , tumors derived from these cells exhibited increased proliferation and grew at an accelerated pace .
+To evaluate the role of autocrine TGF-beta signaling , cells were also transfected with a dominant-negative truncated type II TGF-beta receptor ( TbetaRII ) .
+Disruption of autocrine TGF-beta signaling in the TGF-beta-overexpressing cells reduced their in vivo growth rate .
+Co-inoculation of Matrigel with the TGF-beta-overexpressing cells expressing the truncated TbetaRII compensated for their diminished in vivo growth capacity , compared with the TGF-beta-overexpressing cells with an intact autocrine loop .
+Tissue invasion by the tumor was a distinctive feature of the TGF-beta-overexpressing cells , whether or not the autocrine loop was intact .
+Furthermore , tumors derived from TGF-beta-overexpressing cells , irrespective of the status of the autocrine TGF-beta-signaling pathway , had a higher incidence of lung metastasis .
+Consistent with the suggestion that TGF-beta's enhancement of invasion and metastasis is paracrine-based , we observed no significant differences among the cell clones in an in vitro invasion assay .
+Thus , in this experimental model system in vitro assays of cell proliferation and invasion do not accurately reflect in vivo observations , perhaps due to autocrine and paracrine effects of TGF-beta that influence the important in vivo-based phenomena of tumor growth , invasion , and metastasis .
+",24
+"The involvement of PRL in regulating monocyte/macrophage functions is suggested by the presence of PRL-Rs in these cells .
+Here , we show that PRL , though it failed to activate mouse peritoneal resident macrophages ( RMs ) , acted as a second signal and activated mouse peritoneal inflammatory macrophages ( EMs ) to a tumoricidal state .
+The cytotoxicity of mouse tumor-associated macrophages ( TAMs ) isolated at day 1 of tumor ( Ehrlich ascites carcinoma , EAC ) growth was enhanced by PRL .
+However , with progression of tumor growth , TAMs became nonresponsive to the hormone .
+PRL-induced killing of P815 target cells by EMs and TAMs was independent of TNF but correlated with the hormone-induced augmentation of NO2(-) and O2(-) release in these macrophages .
+Administration of PRL in vivo inhibited EAC growth and augmented NO2(-) release by TAMs .
+PRL synergized with the TH1 cytokine IFN-gamma , a known activator of macrophages , in inducing tumor killing and release of NO2(-) from EMs and TAMs .
+The hormone might activate macrophages at least partially , through the release of IFN-gamma as anti-IFN-gamma blocked IFN-gamma- as well as PRL-induced cytotoxicity in EMs .
+The TH2 cytokine IL-4 suppressed PRL-induced activation of macrophages .
+PRL induced release of IL-12 from EMs also , which suggested that the hormone might drive the TH1 response through IL-12 .
+Our observations further suggest that PRL alone and in synergy with IFN-gamma , released through induction of IL-12 , may generate tumoricidal macrophages and thus regulate the antitumor immune response of tumor hosts .
+",19
+"Primary fibroblasts respond to activated H-RAS(V12) by undergoing premature arrest , which resembles replicative senescence .
+This irreversible ' fail-safe mechanism ' requires p19(ARF) , p53 and the Retinoblastoma ( Rb ) family : upon their disruption , RAS(V12)-expressing cells fail to undergo senescence and continue to proliferate .
+Similarly , co-expression of oncogenes such as c-MYC or E1A rescues RAS(V12)-induced senescence .
+To identify novel genes that allow escape from RAS(V12)-induced senescence , we designed an unbiased , retroviral complementary DNA library screen .
+We report on the identification of DRIL1 , the human orthologue of the mouse Bright and Drosophila dead ringer transcriptional regulators .
+DRIL1 renders primary murine fibroblasts unresponsive to RAS(V12)-induced anti-proliferative signalling by p19(ARF)/p53/p21(CIP1) , as well as by p16(INK4a) .
+In this way , DRIL1 not only rescues RAS(V12)-induced senescence but also causes these fibroblasts to become highly oncogenic .
+Furthermore , DRIL1 immortalizes mouse fibroblasts , in the presence of high levels of p16(INK4a) .
+Immortalization by DRIL1 , whose product binds the pRB-controlled transcription factor E2F1 ( ref. 8 ) , is correlated with induction of E2F1 activity .
+Correspondingly , DRIL1 induces the E2F1 target Cyclin E1 , overexpression of which is sufficient to trigger escape from senescence .
+Thus , DRIL1 disrupts cellular protection against RAS(V12)-induced proliferation downstream of the p19(ARF)/p53 pathway .
+",9
+"Oncostatin M ( OSM ) , an interleukin-6 type cytokine , acts via the gp130 signaling receptor to inhibit proliferation and induce differentiation of breast cancer cells .
+EGF , a mitogen for breast cells , signals via EGFR/ErbB tyrosine kinase receptors which are implicated in breast cancer pathogenesis .
+Here we show paradoxically that EGF enhanced the OSM-induced inhibition of proliferation and induction of cellular differentiation in both estrogen receptor positive and negative breast cancer cells .
+This functional synergism was also seen with heregulin but not SCF , PDGF or IGF-1 , indicating that it was specific to EGF-related growth factors .
+Immunoprecipitation experiments revealed that gp130 was constitutively associated with ErbB-2 and ErbB-3 .
+There was a similar association between the OSMRbeta and ErbB-2 .
+Furthermore , EGF unexpectedly induced tyrosine phosphorylation of gp130 .
+We show that OSM induced phosphorylation of STAT3 .
+Both OSM and EGF activated the p42/44 MAP kinases , but while the MEK inhibitor , PD98059 , ablated the OSM-induced inhibition , it only partially ablated the inhibitory effects of OSM plus EGF .
+Thus , we have demonstrated that the receptors and signalling pathways of two apparently unrelated growth factors were intimately linked , resulting in an unexpected biological effect .
+This provides a new mechanism for generating signalling diversity and has potential clinical implications in breast cancer .
+",1
+"p53 is a tumor suppressor gene that is mutated in many human malignancies , including gastric cancer .
+It remains unclear why patients with germ-line p53 mutations ( i.e. , Li-Fraumeni syndrome ) are not at increased risk for gastric adenocarcinoma , despite the fact that they show a high rate of many other tumors .
+Furthermore , the precise relationship between germ-line p53 mutations and the response to chronic bacterial infections ( such as Helicobacter spp. ) has not been investigated .
+To assess the role of germ-line p53 deletions in modulating the progression to gastric cancer , p53(+/-) and wild-type ( WT ) C57BL/6 mice were infected with H. felis .
+The gastric pathology and immune response in these two groups of mice were analyzed for up to 15 months postinfection .
+The gastric fundus and antrum were evaluated independently using a 0-4 scale to score inflammation , parietal and chief cell loss , mucus metaplasia , and helicobacter colonization .
+Nonparametric statistical analysis was performed to determine the effects of p53(+/-) , infection status , and postinoculation ( p.i. ) time on inflammation , preneoplastic changes , invasive lesions , and helicobacter colonization. mRNA expression for gammaIFN , interleukin ( IL)-1 , IL-10 , and IL-4 was quantified by PCR .
+Sera were also evaluated for H. felis antibody by ELISA .
+Antral inflammation increased significantly with time in infected mice .
+There was a significant , protective effect on the development of preneoplastic fundic lesions and invasive carcinoma attributable to the deletion of one p53 allele ( P < 0.05 ) .
+Submucosal invasive foci were observed in 9 of 11 WT-infected mice ranging from 13 to 15 months p.i. ; invasion of adjacent submucosal blood vessels by glandular epithelia also was present in 5 of these mice .
+None of these lesions were observed in 33 p53(+/-) mice , infected or not , at any time p.i. p53(+/-) mice had significantly higher helicobacter colonization consistent with a Th2 host response .
+In sera from WT mice , IgG2a , considered a proinflammatory Th1 response , continued to rise throughout the 15-month study ( P < 0.004 ) .
+In contrast , IgG2a levels of the p53(+/-) mice were 50-60% lower than those of the WT mice at each time point ( P range , <0.012 to 0.002 ) and did not progress in magnitude between 12 and 15 months of chronic H. felis infection ( P = 0.167). mRNA levels for gammaIFN and IL-1 were significantly up-regulated in WT mice infected with H. felis ( P < 0.05 ) but were slightly elevated or were at background levels in p53(+/-) mice .
+IL-10 and IL-4 mRNA expression was not significantly different from control samples .
+Our results support the hypothesis that germ-line deletion of one p53 allele results in a down-regulated Th1 response to gastric helicobacter infection , possibly because of T-cell senescence , which may indirectly protect against the development of gastric cancer and other epithelial-derived neoplasms associated with chronic inflammation .
+",24

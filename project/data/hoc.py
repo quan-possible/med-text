@@ -33,7 +33,7 @@ class HoC(object):
             [e.name for e in self.target_dir.iterdir() if e.is_file()])
         
         # check if there is existing file and split proportions
-        if not set(['train.csv', 'val.csv', 'test.csv']) \
+        if not set(['hoc_train.csv', 'hoc_val.csv', 'hoc_test.csv']) \
             .issubset(target_files) and split:
             self.split_and_save(self.texts, self.labels, self.target_dir, self.split)
         elif not set(['hoc.csv']).issubset(target_files):
@@ -42,18 +42,18 @@ class HoC(object):
     def split_and_save(self, texts, labels, target_dir, split):
         pd.DataFrame(np.array([texts[:int(len(texts) * split[0])],
                                labels[:int(len(texts) * split[0])]]).T,
-                     columns=['TEXT', 'LABEL']).to_csv(target_dir / 'hoc_train.csv', sep='\t')
+                     columns=['text', 'labels']).to_csv(target_dir / 'hoc_train.csv', sep='\t')
         pd.DataFrame(np.array([texts[:int(len(texts) * split[1])], 
                                labels[:int(len(texts) * split[1])]]).T, 
-                     columns=['TEXT', 'LABEL']).to_csv(target_dir / 'hoc_val.csv', sep='\t')
+                     columns=['text', 'labels']).to_csv(target_dir / 'hoc_val.csv', sep='\t')
         pd.DataFrame(np.array([texts[:int(len(texts) * split[2])], 
                                labels[:int(len(texts) * split[2])]]).T, 
-                     columns=['TEXT', 'LABEL']).to_csv(target_dir / 'hoc_test.csv', sep='\t')
+                     columns=['text', 'labels']).to_csv(target_dir / 'hoc_test.csv', sep='\t')
     
     def save_csv(self, texts, labels, target_dir):
         logging.info("Saving data...")
         pd.DataFrame(np.array([texts, labels]).T, columns=[
-                     'TEXT', 'LABEL']).to_csv(target_dir / 'hoc.csv', sep='\t')
+                     'text', 'labels']).to_csv(target_dir / 'hoc.csv', sep='\t')
 
     def read_texts(text_dir):
         files = [x for x in text_dir.iterdir() if x.is_file()]
@@ -118,6 +118,30 @@ class HoC(object):
                 labels.append(sample_labels.index(''))
 
         return labels
+    
+    @staticmethod
+    def add_model_specific_args(parser):
+
+        parser.add_argument(
+            "--data_path",
+            default="./project/data",
+            type=str,
+            help="Path to directory containing the data.",
+        )
+        parser.add_argument(
+            "--dataset",
+            default="hoc",
+            type=str,
+            help="Dataset chosen. HoC or MTC-5.",
+        )
+        parser.add_argument(
+            "--num_workers",
+            default=8,
+            type=int,
+            help="How many subprocesses to use for data loading. 0 means that \
+                the data will be loaded in the main process.",
+        )
+    
 
     """ DEPRECATED """
 
