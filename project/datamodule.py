@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader, RandomSampler, Dataset
 from transformers import AutoModel
 
 import pytorch_lightning as pl
-from .tokenizer import Tokenizer
+from tokenizer import Tokenizer
 from torchnlp.encoders import LabelEncoder
 from torchnlp.utils import collate_tensors, lengths_to_mask
 # from utils import mask_fill
@@ -51,36 +51,47 @@ class Collator(object):
         if not self.prepare_targets:
             return inputs, {}
 
-        targets = sample["labels"]
+        # print(type(sample["labels"]))
+        # print(inputs["tokens"].size())
+        targets = {"labels": torch.tensor(sample["labels"])}
         return inputs, targets
 
 class DataModule(pl.LightningDataModule):
     
-    def __init__(self, 
-                 classifier_instance, tokenizer,
-                 data_path: str, batch_size, num_workers,
-                 txt_col_name="TEXT", lbl_col_name="LABEL"):
+    def __init__(self, tokenizer, collator, data_path: str, dataset,
+                 batch_size, num_workers, txt_col_name="TEXT", 
+                 lbl_col_name="LABEL"):
         super().__init__()
         
         self.data_path = Path(data_path) if type(
             data_path) is str else data_path
+        self.dataset = dataset.strip().lower()
 
-        self.classifier_instance = classifier_instance
         self.tokenizer = tokenizer
+        self.collator = collator
+        
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.lbl_col_name = lbl_col_name
         self.txt_col_name = txt_col_name
+        
+        self.n_classes = 36 if self.dataset == 'hoc' else 6
+
     
     def prepare_data(self):
         pass
         
     
-    def setup(self):
-        self.collator = Collator(self.tokenizer)
-        self._train_dataset = self._read_csv(self.data_path / "hoc_train.csv")
-        self._val_dataset = self._read_csv(self.data_path / "hoc_val.csv")
-        self._test_dataset = self._read_csv(self.data_path / "hoc_test.csv")
+    def setup(self, stage=None):
+        if stage in (None, "fit"):
+            self._train_dataset = self._read_csv(self.data_path / 
+                                                f"{self.dataset}_train.csv")
+            self._val_dataset = self._read_csv(self.data_path / 
+                                            f"{self.dataset}_val.csv")
+            
+        if stage in (None, 'test'):
+            self._test_dataset = self._read_csv(self.data_path / 
+                                                f"{self.dataset}_test.csv")
         
 
     def train_dataloader(self) -> DataLoader:
@@ -110,9 +121,8 @@ class DataModule(pl.LightningDataModule):
             collate_fn=self.collator,
             num_workers=self.loader_workers,
         )
-        
-    @staticmethod
-    def _read_csv(data_path: str, txt_col_name="TEXT",
+    
+    def _read_csv(self, data_path: str, txt_col_name="TEXT",
                   lbl_col_name="LABEL") -> list:
         """ Reads a comma separated value file.
 
@@ -121,16 +131,73 @@ class DataModule(pl.LightningDataModule):
         :return: List of records as dictionaries
         """
         df = pd.read_csv(data_path, sep='\t', index_col=0,)
-        df[txt_col_name] = df[txt_col_name].astype(str)
-        df[lbl_col_name] = df[lbl_col_name]
-        return df.to_dict("records")
+        df['text'] = df[txt_col_name].astype(str)
+        df['labels'] = df[lbl_col_name]
+        self.n_classes = len(df['labels'].unique())
+        return df[['text','labels']].to_dict("records")
 
     @staticmethod
-    def add_model_specific_args(parent_parser):
-        return
-
-
+    def add_model_specific_args(parser):
         
+        parser.add_argument(
+            "--data_path",
+            default="./project/data",
+            type=str,
+            help="Path to directory containing the data.",
+        )
+        parser.add_argument(
+            "--dataset",
+            default="hoc",
+            type=str,
+            help="Dataset chosen. HoC or MTC-5.",
+        )
+        parser.add_argument(
+            "--num_workers",
+            default=8,
+            type=int,
+            help="How many subprocesses to use for data loading. 0 means that \
+                the data will be loaded in the main process.",
+        )
+        
+        parser.add_argument(
+            "--txt_col_name",
+            default="TEXT",
+            type=str,
+            help="Column name of the texts in the csv files.",
+        )
+        
+        parser.add_argument(
+            "--lbl_col_name",
+            default="LABEL",
+            type=str,
+            help="Column name of the labels in the csv files.",
+        )
+        
+        return parser
+
+
+if __name__ == "__main__":
+    
+    MODEL = "bert-base-uncased"
+    DATA_PATH = "./project/data"
+    DATASET = "hoc"
+    BATCH_SIZE = 2
+    NUM_WORKERS = 2
+    tokenizer = Tokenizer(MODEL)
+    collator = Collator(tokenizer)
+    datamodule = DataModule(
+        tokenizer, collator, DATA_PATH, 
+        DATASET, BATCH_SIZE, NUM_WORKERS
+    )
+    
+    datamodule.setup()
+    
+    print(next(iter(datamodule.train_dataloader()))[1])
+    
+    ### TODO: Write unit test
+    
+    
+    
 
 """ DEPRECATED """
 
