@@ -105,9 +105,10 @@ class Classifier(pl.LightningModule):
                                              ).float().sum(1)
         sentemb = sentemb / sum_mask
         
+        # Classification head
         logits = self.classification_head(sentemb)
 
-        return {"logits": self.classification_head(sentemb)}
+        return {"logits": logits}
     
     def __build_loss(self):
         """ Initializes the loss function/s. """
