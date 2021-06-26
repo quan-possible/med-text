@@ -13,11 +13,12 @@ import torch
 import torch.nn as nn
 from torch import optim
 from torch.utils.data import random_split
-from torch.utils.data import DataLoader, RandomSampler, Dataset
+from torch.utils.data import DataLoader
+from torch.utils.data.sampler import SequentialSampler, RandomSampler
 from transformers import AutoModel
 
 import pytorch_lightning as pl
-from tokenizer import Tokenizer
+from project.tokenizer import Tokenizer
 from torchnlp.encoders import LabelEncoder
 from torchnlp.utils import collate_tensors, lengths_to_mask
 # from utils import mask_fill
@@ -60,7 +61,7 @@ class DataModule(pl.LightningDataModule):
     
     def __init__(self, tokenizer, collator, data_path: str, dataset,
                  batch_size, num_workers, txt_col_name="TEXT", 
-                 lbl_col_name="LABEL"):
+                 lbl_col_name="LABEL", rand_sampling=True):
         super().__init__()
         
         self.data_path = Path(data_path) if type(
@@ -75,6 +76,9 @@ class DataModule(pl.LightningDataModule):
         self.lbl_col_name = lbl_col_name
         self.txt_col_name = txt_col_name
         
+        self.sampler = RandomSampler if rand_sampling \
+            else SequentialSampler
+        
         self.n_classes = 36 if self.dataset == 'hoc' else 6
 
     
@@ -84,13 +88,13 @@ class DataModule(pl.LightningDataModule):
     
     def setup(self, stage=None):
         if stage in (None, "fit"):
-            self._train_dataset = self._read_csv(self.data_path / 
+            self._train_dataset = self.read_csv(self.data_path / 
                                                 f"{self.dataset}_train.csv")
-            self._val_dataset = self._read_csv(self.data_path / 
+            self._val_dataset = self.read_csv(self.data_path / 
                                             f"{self.dataset}_val.csv")
             
         if stage in (None, 'test'):
-            self._test_dataset = self._read_csv(self.data_path / 
+            self._test_dataset = self.read_csv(self.data_path / 
                                                 f"{self.dataset}_test.csv")
         
 
@@ -98,7 +102,7 @@ class DataModule(pl.LightningDataModule):
         """ Function that loads the train set. """
         return DataLoader(
             dataset=self._train_dataset,
-            sampler=RandomSampler(self._train_dataset),
+            sampler=self.sampler(self._train_dataset),
             batch_size=self.batch_size,
             collate_fn=self.collator,
             num_workers=self.num_workers,

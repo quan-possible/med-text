@@ -13,12 +13,12 @@ from torch.utils.data import DataLoader, RandomSampler
 from transformers import AutoModel
 
 import pytorch_lightning as pl
-from tokenizer import Tokenizer
-from datamodule import DataModule, Collator
+from project.tokenizer import Tokenizer
+from project.datamodule import DataModule, Collator
 from torchnlp.encoders import LabelEncoder
-from torchnlp.utils import collate_tensors, lengths_to_mask
+from torchnlp.utils import lengths_to_mask
 from pytorch_lightning.utilities.seed import seed_everything
-from utils import mask_fill
+from project.utils import mask_fill
 
 
 class Classifier(pl.LightningModule):
@@ -76,7 +76,7 @@ class Classifier(pl.LightningModule):
             nn.Tanh(),
             nn.Linear(self.encoder_features * 2, self.encoder_features),
             nn.Tanh(),
-            nn.Linear(self.encoder_features,self.n_classes),
+            nn.Linear(self.encoder_features, self.n_classes),
         )
 
     def forward(self, tokens, lengths):
@@ -104,6 +104,8 @@ class Classifier(pl.LightningModule):
         sum_mask = mask.unsqueeze(-1).expand(word_embeddings.size()
                                              ).float().sum(1)
         sentemb = sentemb / sum_mask
+        
+        logits = self.classification_head(sentemb)
 
         return {"logits": self.classification_head(sentemb)}
     
@@ -145,6 +147,8 @@ class Classifier(pl.LightningModule):
             #     for prediction in np.argmax(logits, axis=1)
             # ]
             # sample["predicted_label"] = predicted_labels[0]
+            
+            
             
             sample["predicted_label"] = np.argmax(logits, axis=1)[0]
 
@@ -327,7 +331,8 @@ if __name__ == "__main__":
     collator = Collator(tokenizer)
     datamodule = DataModule(
         tokenizer, collator, DATA_PATH,
-        DATASET, BATCH_SIZE, NUM_WORKERS
+        DATASET, BATCH_SIZE, NUM_WORKERS,
+        rand_sampling=False
     )
 
     n_classes = datamodule.n_classes
