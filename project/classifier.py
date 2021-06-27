@@ -79,14 +79,17 @@ class Classifier(pl.LightningModule):
             nn.Linear(self.encoder_features, self.n_classes),
         )
 
-    def forward(self, tokens, lengths):
+    def forward(self, tokens_lengths):
         """ Usual pytorch forward function. 
-        :param tokens: text sequences [batch_size x src_seq_len]
-        :param lengths: source lengths [batch_size]
+        :param tokens_lengths: tuple of:
+            - text sequences [batch_size x src_seq_len]
+            - lengths: source lengths [batch_size]
 
         Returns:
             Dictionary with model outputs (e.g: logits)
         """
+        tokens, lengths = tokens_lengths['tokens'], \
+            tokens_lengths['lengths']
         tokens = tokens[:, : lengths.max()]
         # When using just one GPU this should not change behavior
         # but when splitting batches across GPU the tokens have padding
@@ -112,7 +115,7 @@ class Classifier(pl.LightningModule):
     
     def __build_loss(self):
         """ Initializes the loss function/s. """
-        self._loss = nn.CrossEntropyLoss()
+        self.loss_fn = nn.CrossEntropyLoss()
 
     def unfreeze_encoder(self) -> None:
         """ un-freezes the encoder layer. """
@@ -141,7 +144,7 @@ class Classifier(pl.LightningModule):
         with torch.no_grad():
             model_input, _ = self.collator(
                 [sample], prepare_target=False)
-            model_out = self.forward(**model_input)
+            model_out = self.forward(model_input)
             logits = model_out["logits"].numpy()
             # predicted_labels = [
             #     self.data.label_encoder.index_to_token[prediction]
@@ -159,13 +162,13 @@ class Classifier(pl.LightningModule):
         """
         Computes Loss value according to a loss function.
         :param predictions: model specific output. Must contain a key 'logits' with
-            a tensor [batch_size x 1] with model predictions
+            a tensor [batch_size x n_classes] with model predictions
         :param labels: Label values [batch_size]
 
         Returns:
             torch.tensor with loss value.
         """
-        return self._loss(predictions["logits"], targets["labels"])
+        return self.loss_fn(predictions["logits"], targets["labels"])
 
     def training_step(self, batch: tuple, batch_nb: int, *args, **kwargs) -> dict:
         """ 
@@ -179,7 +182,7 @@ class Classifier(pl.LightningModule):
             - dictionary containing the loss and the metrics to be added to the lightning logger.
         """
         inputs, targets = batch
-        model_out = self.forward(**inputs)
+        model_out = self.forward(inputs)
         loss_val = self.loss(model_out, targets)
 
         # in DP mode (default) make sure if result is scalar, there's another dim in the beginning
@@ -190,7 +193,7 @@ class Classifier(pl.LightningModule):
         output = OrderedDict(
             {"loss": loss_val, "progress_bar": tqdm_dict, "log": tqdm_dict}
         )
-
+        
         # can also return just a scalar instead of a dict (return loss_val)
         return output
 
@@ -202,7 +205,7 @@ class Classifier(pl.LightningModule):
         """
         inputs, targets = batch
         # print(inputs)
-        model_out = self.forward(**inputs)
+        model_out = self.forward(inputs)
         # print
         loss_val = self.loss(model_out, targets)
 
@@ -270,8 +273,8 @@ class Classifier(pl.LightningModule):
                 "lr": self.encoder_learning_rate,
             },
         ]
-        optimizer = optim.Adam(parameters, lr=self.learning_rate)
-        return [optimizer], []
+        self.optimizer = optim.Adam(parameters, lr=self.learning_rate)
+        return [self.optimizer], []
 
     def on_epoch_end(self):
         """ Pytorch lightning hook """
