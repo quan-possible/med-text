@@ -13,12 +13,12 @@ from torch.utils.data import DataLoader, RandomSampler
 from transformers import AutoModel
 
 import pytorch_lightning as pl
-from project.tokenizer import Tokenizer
-from project.datamodule import DataModule, Collator
+from tokenizer import Tokenizer
+from datamodule import DataModule, Collator
 from torchnlp.encoders import LabelEncoder
 from torchnlp.utils import lengths_to_mask
 from pytorch_lightning.utilities.seed import seed_everything
-from project.utils import mask_fill
+from utils import mask_fill
 
 
 class Classifier(pl.LightningModule):
