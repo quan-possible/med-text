@@ -290,12 +290,12 @@ class Classifier(pl.LightningModule):
         Returns:
             - updated parser
         """
-        parser.add_argument(
-            "--n_classes",
-            default=36,
-            type=str,
-            help="Column name of the labels in the csv files.",
-        )
+        # parser.add_argument(
+        #     "--n_classes",
+        #     default=36,
+        #     type=str,
+        #     help="Column name of the labels in the csv files.",
+        # )
         
         parser.add_argument(
             "--encoder_learning_rate",
@@ -315,7 +315,6 @@ class Classifier(pl.LightningModule):
             type=int,
             help="Number of epochs we want to keep the encoder model frozen.",
         )
-        
 
         return parser
     

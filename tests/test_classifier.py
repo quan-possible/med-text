@@ -18,11 +18,12 @@ class TestModel():
         
     def test_shape(self, batch, batch_size, n_classes):
         inputs, targets = batch
+        
         self.model.eval()
-        res = self.model(inputs)
+        res = self.model(inputs)['logits']
 
         err_msg = "Incorrect output shape!"
-        assert res['logits'].size() == torch.Size(
+        assert res.size() == torch.Size(
             [batch_size, n_classes]), err_msg
         
     def _training_step(self, batch):
@@ -80,68 +81,6 @@ class TestModel():
                     assert torch.equal(p0, p1)
             except AssertionError:
                 raise Exception(f"{name} {'did not change!' if vars_change else 'changed!'}")
-
-# class TestClassifier():
-    
-#     def __init__(self, batch_size=2,
-#                  encoder_model="bert-base-uncased",
-#                  data_path="./project/data",
-#                  dataset="hoc",
-#                  num_workers=2,
-#                  nr_frozen_epochs=1,
-#                  encoder_learning_rate=1e-05,
-#                  learning_rate=3e-05,
-#                  random_sampling=False,
-#                  device='cpu') -> None:
-        
-#         self.batch_size = batch_size
-#         self.tokenizer = Tokenizer(encoder_model)
-#         self.collator = Collator(self.tokenizer)
-        
-#         self.datamodule = DataModule(
-#             self.tokenizer, self.collator, data_path,
-#             dataset, self.batch_size, num_workers,
-#             rand_sampling=random_sampling,
-#         )
-
-#         self.n_classes = self.datamodule.n_classes
-
-#         self.model = Classifier(
-#             self.tokenizer, self.collator, encoder_model,
-#             self.batch_size, self.n_classes, nr_frozen_epochs,
-#             encoder_learning_rate, learning_rate,
-#         )
-        
-#         self.optim = self.model.configure_optimizers()[0][0]
-        
-#     def _training_step(self, model, batch):
-#         # put model in train mode
-#         model.train()
-
-#         # run one forward + backward step
-#         # clear gradient
-#         self.optim.zero_grad()
-#         # inputs and targets
-#         inputs, targets = batch
-#         # forward
-#         likelihood = self.model(inputs)
-#         # calc loss
-#         loss = self.model.loss(likelihood, targets)
-#         # backward
-#         loss.backward()
-#         # optimization step
-#         self.optim.step()
-
-#     def test_shape(self, batch):
-        
-#         inputs, targets = batch
-#         res = self.model(inputs)
-
-#         err_msg = "Incorrect output shape!"
-#         assert res['logits'].size() == torch.Size(
-#             [self.batch_size, self.n_classes]), err_msg
-    
-
     
 
 if __name__ == "__main__":
@@ -176,7 +115,7 @@ if __name__ == "__main__":
     
     datamodule.setup()
     batch = next(iter(datamodule.train_dataloader()))
-    print(batch)
+    # print(batch)
     
     test_obj = TestModel(model)
     test_obj.test_shape(batch, BATCH_SIZE, n_classes)

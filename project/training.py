@@ -119,7 +119,7 @@ if __name__ == "__main__":
         description="Minimalist Transformer Classifier",
         add_help=True,
     )
-    parser.add_argument("--seed", type=int, default=3, help="Training seed.")
+    parser.add_argument("--seed", type=int, default=69, help="Training seed.")
     parser.add_argument(
         "--encoder_model",
         default="bert-base-uncased",
@@ -167,7 +167,7 @@ if __name__ == "__main__":
 
     # Batching
     parser.add_argument(
-        "--batch_size", default=6, type=int, help="Batch size to be used."
+        "--batch_size", default=32, type=int, help="Batch size to be used."
     )
     parser.add_argument(
         "--accumulate_grad_batches",
