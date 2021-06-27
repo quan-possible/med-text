@@ -27,7 +27,7 @@ class TestModel():
             [batch_size, n_classes]), err_msg
         
     def _training_step(self, batch):
-            # put model in train mode
+        # put model in train mode
         self.model.train()
         # run one forward + backward step
         # clear gradient
@@ -43,7 +43,9 @@ class TestModel():
         # optimization step
         self.optim.step()
         
-    def test_params_update(self, batch, vars_change=True, params=None):
+    def test_params_update(self, batch, exceptions=["bert.pooler.dense.weight",
+                                                    "bert.pooler.dense.bias"], 
+                           vars_change=True, params=None):
         """Check if given variables (params) change or not during training
         If parameters (params) aren't provided, check all parameters.
         Parameters
@@ -68,19 +70,22 @@ class TestModel():
 
         # take a copy
         initial_params = [(name, p.clone()) for (name, p) in params]
+        # for (name,_) in initial_params:
+        #     print(name)
 
         # run a training step
         self._training_step(batch)
 
         # check if variables have changed
+        suspects = []
         for (_, p0), (name, p1) in zip(initial_params, params):
-            try:
-                if vars_change:
-                    assert not torch.equal(p0, p1)
-                else:
-                    assert torch.equal(p0, p1)
-            except AssertionError:
-                raise Exception(f"{name} {'did not change!' if vars_change else 'changed!'}")
+            
+            if name not in exceptions:
+                if (vars_change and torch.equal(p0, p1)) \
+                    or (not vars_change and not torch.equal(p0, p1)):
+                    suspects.append(name)
+
+        assert len(suspects) == 0, f"{suspects}{' did not change!' if vars_change else 'changed!'}"
     
 
 if __name__ == "__main__":
@@ -90,7 +95,7 @@ if __name__ == "__main__":
     DATA_PATH = "./project/data"
     DATASET = "hoc"
     NUM_WORKERS = 2
-    NR_FROZEN_EPOCHS = 1
+    NR_FROZEN_EPOCHS = 0
     ENCODER_LEARNING_RATE = 1e-05
     LEARNING_RATE = 3e-05
     RANDOM_SAMPLING = False

@@ -98,6 +98,7 @@ class Classifier(pl.LightningModule):
 
         # Run BERT model.
         word_embeddings = self.bert(tokens, mask)[0]
+        # print(word_embeddings.size())
 
         # Average Pooling
         word_embeddings = mask_fill(
@@ -311,7 +312,7 @@ class Classifier(pl.LightningModule):
         )
         parser.add_argument(
             "--nr_frozen_epochs",
-            default=1,
+            default=0,
             type=int,
             help="Number of epochs we want to keep the encoder model frozen.",
         )

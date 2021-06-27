@@ -1,0 +1,16 @@
+name: med-text
+channels:
+  - pytorch
+  - huggingface
+  - conda-forge
+  - defaults
+dependencies:
+  - numpy
+  - pandas
+  - pytorch
+  - transformers
+  - typing-extensions
+  - pip:
+    - pytorch-lightning
+    - pytorch-nlp
+
