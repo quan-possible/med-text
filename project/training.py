@@ -9,11 +9,11 @@ from pytorch_lightning import callbacks
 from pytorch_lightning.core import datamodule
 
 from classifier import Classifier
-from datamodule import DataModule, Collator 
+from datamodule import DataModule, Collator
 from tokenizer import Tokenizer
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
-from pytorch_lightning.loggers import LightningLoggerBase, TensorBoardLogger
+from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.utilities.seed import seed_everything
 from torchnlp.random import set_seed
 
@@ -36,16 +36,16 @@ def main(hparams) -> None:
         hparams.dataset, hparams.batch_size, hparams.num_workers,
         hparams.txt_col_name, hparams.lbl_col_name
     )
-    
+
     n_classes = datamodule.n_classes
-    
+
     model = Classifier(
         tokenizer, collator,
-        hparams.encoder_model, hparams.batch_size, n_classes, 
-        hparams.nr_frozen_epochs, hparams.encoder_learning_rate, 
+        hparams.encoder_model, hparams.batch_size, n_classes,
+        hparams.nr_frozen_epochs, hparams.encoder_learning_rate,
         hparams.learning_rate,
     )
-    
+
     # ------------------------
     # 2 INIT EARLY STOPPING
     # ------------------------
@@ -80,7 +80,7 @@ def main(hparams) -> None:
         save_top_k=hparams.save_top_k,
         verbose=True,
         monitor=hparams.monitor,
-        period=1,
+        every_n_val_epochs=1,
         mode=hparams.metric_mode,
         save_weights_only=True
     )
@@ -90,8 +90,8 @@ def main(hparams) -> None:
     # ------------------------
     trainer = Trainer(
         logger=tb_logger,
-        checkpoint_callback=True,
-        callbacks=[early_stop_callback],
+        callbacks=[early_stop_callback,
+                   checkpoint_callback],
         gradient_clip_val=1.0,
         gpus=hparams.gpus,
         log_gpu_memory="all",
@@ -102,7 +102,7 @@ def main(hparams) -> None:
         max_epochs=hparams.max_epochs,
         min_epochs=hparams.min_epochs,
         val_check_interval=hparams.val_check_interval,
-        distributed_backend="dp",
+        accelerator="ddp",
     )
     # ------------------------
     # 6 START TRAINING
@@ -134,7 +134,8 @@ if __name__ == "__main__":
     )
     # Early Stopping
     parser.add_argument(
-        "--monitor", default="val_acc", type=str, help="Quantity to monitor."
+        "--monitor", default="val_acc", type=str,
+        help="Quantity to monitor."
     )
     parser.add_argument(
         "--metric_mode",
@@ -167,7 +168,7 @@ if __name__ == "__main__":
 
     # Batching
     parser.add_argument(
-        "--batch_size", default=32, type=int, help="Batch size to be used."
+        "--batch_size", default=8, type=int, help="Batch size to be used."
     )
     parser.add_argument(
         "--accumulate_grad_batches",

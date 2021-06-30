@@ -4,6 +4,7 @@ from argparse import ArgumentParser, Namespace
 from collections import OrderedDict
 from typing import Tuple
 
+
 import numpy as np
 import pandas as pd
 import torch
@@ -13,6 +14,7 @@ from torch.utils.data import DataLoader, RandomSampler
 from transformers import AutoModel
 
 import pytorch_lightning as pl
+from torchmetrics.functional import f1, precision_recall
 from tokenizer import Tokenizer
 from datamodule import DataModule, Collator
 from torchnlp.encoders import LabelEncoder
@@ -30,20 +32,19 @@ class Classifier(pl.LightningModule):
 
     def __init__(self, tokenizer, collator, encoder_model,
                  batch_size, n_classes, nr_frozen_epochs,
-                #  label_encoder, 
+                 #  label_encoder,
                  encoder_learning_rate, learning_rate,) -> None:
         super(Classifier, self).__init__()
-        
+
         self.tokenizer = tokenizer
         self.collator = collator
-        
+
         self.batch_size = batch_size
         self.n_classes = n_classes
         # self.label_encoder = label_encoder
         self.encoder_model = encoder_model
         self.encoder_learning_rate = encoder_learning_rate
         self.learning_rate = learning_rate
-
 
         # build model
         self.__build_model()
@@ -55,7 +56,7 @@ class Classifier(pl.LightningModule):
             self.freeze_encoder()
         else:
             self._frozen = False
-            
+
         self.nr_frozen_epochs = nr_frozen_epochs
 
     def __build_model(self) -> None:
@@ -98,7 +99,6 @@ class Classifier(pl.LightningModule):
 
         # Run BERT model.
         word_embeddings = self.bert(tokens, mask)[0]
-        # print(word_embeddings.size())
 
         # Average Pooling
         word_embeddings = mask_fill(
@@ -108,12 +108,12 @@ class Classifier(pl.LightningModule):
         sum_mask = mask.unsqueeze(-1).expand(word_embeddings.size()
                                              ).float().sum(1)
         sentemb = sentemb / sum_mask
-        
+
         # Classification head
         logits = self.classification_head(sentemb)
 
         return {"logits": logits}
-    
+
     def __build_loss(self):
         """ Initializes the loss function/s. """
         self.loss_fn = nn.CrossEntropyLoss()
@@ -152,9 +152,7 @@ class Classifier(pl.LightningModule):
             #     for prediction in np.argmax(logits, axis=1)
             # ]
             # sample["predicted_label"] = predicted_labels[0]
-            
-            
-            
+
             sample["predicted_label"] = np.argmax(logits, axis=1)[0]
 
         return sample
@@ -184,19 +182,11 @@ class Classifier(pl.LightningModule):
         """
         inputs, targets = batch
         model_out = self.forward(inputs)
-        loss_val = self.loss(model_out, targets)
+        loss = self.loss(model_out, targets)
 
-        # in DP mode (default) make sure if result is scalar, there's another dim in the beginning
-        if self.trainer.use_dp or self.trainer.use_ddp2:
-            loss_val = loss_val.unsqueeze(0)
+        self.log("loss", loss)
 
-        tqdm_dict = {"train_loss": loss_val}
-        output = OrderedDict(
-            {"loss": loss_val, "progress_bar": tqdm_dict, "log": tqdm_dict}
-        )
-        
-        # can also return just a scalar instead of a dict (return loss_val)
-        return output
+        return loss
 
     def validation_step(self, batch: tuple, batch_nb: int, *args, **kwargs) -> dict:
         """ Similar to the training step but with the model in eval mode.
@@ -205,65 +195,32 @@ class Classifier(pl.LightningModule):
             - dictionary passed to the validation_end function.
         """
         inputs, targets = batch
-        # print(inputs)
         model_out = self.forward(inputs)
-        # print
-        loss_val = self.loss(model_out, targets)
+        loss = self.loss(model_out, targets)
 
         y = targets["labels"]
-        y_hat = model_out["logits"]
+        logits = model_out["logits"]
+
+        preds = torch.argmax(logits, dim=1)
 
         # acc
-        labels_hat = torch.argmax(y_hat, dim=1)
-        val_acc = torch.sum(y == labels_hat).item() / (len(y) * 1.0)
-        val_acc = torch.tensor(val_acc)
+        val_acc = torch.sum(y == preds).item() / (len(y) * 1.0)
 
-        if self.on_gpu:
-            val_acc = val_acc.cuda(loss_val.device.index)
+        # f1
+        val_f1 = f1(preds, y, num_classes=self.n_classes)
 
-        # in DP mode (default) make sure if result is scalar, there's another dim in the beginning
-        if self.trainer.use_dp or self.trainer.use_ddp2:
-            loss_val = loss_val.unsqueeze(0)
-            val_acc = val_acc.unsqueeze(0)
+        # precision and recall
+        val_precision, val_recall = precision_recall(preds, y, 
+                                                     num_classes=self.n_classes)
 
-        output = OrderedDict({"val_loss": loss_val, "val_acc": val_acc, })
+        output = OrderedDict({"val_loss": loss, "val_acc": val_acc,
+                              "val_f1": val_f1, "val_precision": val_precision,
+                              "val_recall": val_recall})
+        self.log_dict(output, prog_bar=True)
+        self.log_dict
 
         # can also return just a scalar instead of a dict (return loss_val)
         return output
-
-    def validation_end(self, outputs: list) -> dict:
-        """ Function that takes as input a list of dictionaries returned by the validation_step
-        function and measures the model performance accross the entire validation set.
-        
-        Returns:
-            - Dictionary with metrics to be added to the lightning logger.  
-        """
-        val_loss_mean = 0
-        val_acc_mean = 0
-        for output in outputs:
-            val_loss = output["val_loss"]
-
-            # reduce manually when using dp
-            if self.trainer.use_dp or self.trainer.use_ddp2:
-                val_loss = torch.mean(val_loss)
-            val_loss_mean += val_loss
-
-            # reduce manually when using dp
-            val_acc = output["val_acc"]
-            if self.trainer.use_dp or self.trainer.use_ddp2:
-                val_acc = torch.mean(val_acc)
-
-            val_acc_mean += val_acc
-
-        val_loss_mean /= len(outputs)
-        val_acc_mean /= len(outputs)
-        tqdm_dict = {"val_loss": val_loss_mean, "val_acc": val_acc_mean}
-        result = {
-            "progress_bar": tqdm_dict,
-            "log": tqdm_dict,
-            "val_loss": val_loss_mean,
-        }
-        return result
 
     def configure_optimizers(self):
         """ Sets different Learning rates for different parameter groups. """
@@ -284,20 +241,14 @@ class Classifier(pl.LightningModule):
 
     @staticmethod
     def add_model_specific_args(parser: ArgumentParser) \
-        -> ArgumentParser:
+            -> ArgumentParser:
         """ Parser for Estimator specific arguments/hyperparameters. 
         :param parser: argparse.ArgumentParser
 
         Returns:
             - updated parser
         """
-        # parser.add_argument(
-        #     "--n_classes",
-        #     default=36,
-        #     type=str,
-        #     help="Column name of the labels in the csv files.",
-        # )
-        
+
         parser.add_argument(
             "--encoder_learning_rate",
             default=1e-05,
@@ -318,7 +269,43 @@ class Classifier(pl.LightningModule):
         )
 
         return parser
-    
+
+    " DEPRECATED "
+    # def validation_epoch_end(self, outputs: list) -> dict:
+    #     """ Function that takes as input a list of dictionaries returned by the validation_step
+    #     function and measures the model performance accross the entire validation set.
+
+    #     Returns:
+    #         - Dictionary with metrics to be added to the lightning logger.
+    #     """
+    #     val_loss_mean = 0
+    #     val_acc_mean = 0
+    #     for output in outputs:
+    #         val_loss = output["val_loss"]
+
+    #         # reduce manually when using dp
+    #         if self.trainer.use_dp or self.trainer.use_ddp2:
+    #             val_loss = torch.mean(val_loss)
+    #         val_loss_mean += val_loss
+
+    #         # reduce manually when using dp
+    #         val_acc = output["val_acc"]
+    #         if self.trainer.use_dp or self.trainer.use_ddp2:
+    #             val_acc = torch.mean(val_acc)
+
+    #         val_acc_mean += val_acc
+
+    #     val_loss_mean /= len(outputs)
+    #     val_acc_mean /= len(outputs)
+    #     tqdm_dict = {"val_loss": val_loss_mean, "val_acc": val_acc_mean}
+    #     result = {
+    #         "progress_bar": tqdm_dict,
+    #         "log": tqdm_dict,
+    #         "val_loss": val_loss_mean,
+    #         "val_acc": val_acc_mean,
+    #     }
+
+    #     return result
 if __name__ == "__main__":
     ENCODER_MODEL = "bert-base-uncased"
     DATA_PATH = "./project/data"
@@ -328,9 +315,9 @@ if __name__ == "__main__":
     NR_FROZEN_EPOCHS = 1
     ENCODER_LEARNING_RATE = 1e-05
     LEARNING_RATE = 3e-05
-    
+
     seed_everything(69)
-    
+
     tokenizer = Tokenizer(ENCODER_MODEL)
     collator = Collator(tokenizer)
     datamodule = DataModule(
@@ -342,10 +329,10 @@ if __name__ == "__main__":
     n_classes = datamodule.n_classes
 
     model = Classifier(
-        tokenizer, collator, ENCODER_MODEL, 
-        BATCH_SIZE, n_classes, NR_FROZEN_EPOCHS, 
+        tokenizer, collator, ENCODER_MODEL,
+        BATCH_SIZE, n_classes, NR_FROZEN_EPOCHS,
         ENCODER_LEARNING_RATE, LEARNING_RATE,
     )
-    
+
     trainer = pl.Trainer()
     trainer.fit(model, datamodule)
