@@ -1,9 +1,5 @@
-import logging
-import numpy as np
 import pandas as pd
 import re
-import pathlib
-import typing
 
 from pathlib import Path
 from collections import defaultdict, OrderedDict
@@ -72,5 +68,5 @@ class HoC():
                 for x in all_labels]
         
 if __name__ == "__main__":
-    data = Path("project\data\HoC")
-    hoc = HoC(data, data)
+    SOURCE_DIR, TARGET_DIR = Path("project\data\HoC"), Path("project\data")
+    hoc = HoC(SOURCE_DIR, TARGET_DIR)
