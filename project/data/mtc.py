@@ -5,13 +5,12 @@ import re
 from nltk.corpus import stopwords
 from string import digits
 from pathlib import Path
-from sklearn.model_selection import train_test_split
 import logging
 
 
 class MTC(object):
-    
-    def __init__(self, source_dir, target_dir, split=None):
+
+    def __init__(self, source_dir, target_dir, split=[0.8, 0.1, 0.1]):
         """
         source_dir: str or posix path. source directory of raw data
         target_dir: str or posix path. target directory to save split data
@@ -20,26 +19,28 @@ class MTC(object):
             source_dir) is str else source_dir
         self.target_dir = Path(target_dir) if type(
             target_dir) is str else target_dir
-        self.texts, self.labels = self.read_raw_data(self.source_dir/'train.dat')
+        self.split = split
         
+        self.texts, self.labels = self.read_raw_data(self.source_dir / 'train.dat')
+
         self.texts = self.preprocess_text(self.texts)
-        
+
         target_files = set(
             [e.name for e in self.target_dir.iterdir() if e.is_file()])
-        
+
         if not set(['mtc_train.csv', 'mtc_val.csv', 'mtc_test.csv']) \
-            .issubset(target_files) and split:
+                .issubset(target_files) and self.split:
             self.split_and_save(self.texts, self.labels, self.target_dir, self.split)
         elif not set(['mtc.csv']).issubset(target_files):
             self.save_csv(self.texts, self.labels, self.target_dir)
-    
+
     def preprocess_text(self, texts):
         texts_filtered = self._filterLen(
             [l.split() for l in texts], 4)  # TODO
         texts_processed = self._text_preprocess(texts_filtered)
-        
+
         return texts_processed
-    
+
     def split_and_save(self, texts, labels, target_dir, split):
         assert split != None, "No split proportions available."
 
@@ -52,12 +53,12 @@ class MTC(object):
         pd.DataFrame(np.array([texts[:int(len(texts) * split[2])],
                                labels[:int(len(texts) * split[2])]]).T,
                      columns=['TEXT', 'LABEL']).to_csv(target_dir / 'mtc_test.csv', sep='\t')
-    
+
     def save_csv(self, texts, labels, target_dir):
         logging.info("Saving data...")
         pd.DataFrame(np.array([texts, labels]).T, columns=[
             'TEXT', 'LABEL']).to_csv(target_dir / 'mtc.csv', sep='\t')
-    
+
     # remove short words
     def _filterLen(self, tdocs, minlen):
         return [' '.join(t for t in d if len(t) >= minlen) for d in tdocs]
@@ -72,7 +73,7 @@ class MTC(object):
             data_arr[i] = pattern.sub('', data_arr[i])
             data_arr[i] = data_arr[i].translate(digits)  # TODO
         return data_arr
-    
+
     @staticmethod
     def read_raw_data(data_file):
         text, labels = [], []
@@ -84,9 +85,9 @@ class MTC(object):
             labels.append(lines[i][0:1])
         labels = np.asarray(labels)
         return text, labels
-    
+
     """ DEPRECATED """
-    
+
     # def split_and_save(self, ratio=[0.8, 0.1, 0.1]):
     #     """
     #     ration: list of a triplet. train/val/test ratio. default: [0.8, 0.1, 0.1]
@@ -108,9 +109,7 @@ class MTC(object):
     #         self.target_dir/'val.csv', sep='\t', index=False)
     #     pd.DataFrame(np.array([txt_test, lbl_test]).T, columns=['TEXT', 'LABEL']).to_csv(
     #         self.target_dir/'test.csv', sep='\t', index=False)
-    
-    
+
+
 if __name__ == "__main__":
     mtc = MTC("./project/data/MTC-5/data", "./project/data")
-
-    
