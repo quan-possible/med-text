@@ -27,10 +27,10 @@ class MTC(object):
         target_files = set(
             [e.name for e in self.target_dir.iterdir() if e.is_file()])
         
-        if not set(['train.csv', 'val.csv', 'test.csv']) \
+        if not set(['mtc_train.csv', 'mtc_val.csv', 'mtc_test.csv']) \
             .issubset(target_files) and split:
             self.split_and_save(self.texts, self.labels, self.target_dir, self.split)
-        elif not set(['hoc.csv']).issubset(target_files):
+        elif not set(['mtc.csv']).issubset(target_files):
             self.save_csv(self.texts, self.labels, self.target_dir)
     
     def preprocess_text(self, texts):
@@ -45,18 +45,18 @@ class MTC(object):
 
         pd.DataFrame(np.array([texts[:int(len(texts) * split[0])],
                                labels[:int(len(texts) * split[0])]]).T,
-                     columns=['TEXT', 'LABEL']).to_csv(target_dir / 'hoc_train.csv', sep='\t')
+                     columns=['TEXT', 'LABEL']).to_csv(target_dir / 'mtc_train.csv', sep='\t')
         pd.DataFrame(np.array([texts[:int(len(texts) * split[1])],
                                labels[:int(len(texts) * split[1])]]).T,
-                     columns=['TEXT', 'LABEL']).to_csv(target_dir / 'hoc_val.csv', sep='\t')
+                     columns=['TEXT', 'LABEL']).to_csv(target_dir / 'mtc_val.csv', sep='\t')
         pd.DataFrame(np.array([texts[:int(len(texts) * split[2])],
                                labels[:int(len(texts) * split[2])]]).T,
-                     columns=['TEXT', 'LABEL']).to_csv(target_dir / 'hoc_test.csv', sep='\t')
+                     columns=['TEXT', 'LABEL']).to_csv(target_dir / 'mtc_test.csv', sep='\t')
     
-    def save_csv(self, texts, labels):
+    def save_csv(self, texts, labels, target_dir):
         logging.info("Saving data...")
         pd.DataFrame(np.array([texts, labels]).T, columns=[
-            'TEXT', 'LABEL']).to_csv(self.target_dir / 'mtc.csv', sep='\t')
+            'TEXT', 'LABEL']).to_csv(target_dir / 'mtc.csv', sep='\t')
     
     # remove short words
     def _filterLen(self, tdocs, minlen):
