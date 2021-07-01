@@ -1,161 +1,76 @@
+import logging
 import numpy as np
 import pandas as pd
-from nltk.stem import PorterStemmer, WordNetLemmatizer
 import re
-from nltk.corpus import stopwords
-from string import digits
-import os
-import logging
+import pathlib
+import typing
+
 from pathlib import Path
-import random
-from math import isclose
+from collections import defaultdict, OrderedDict
 
-class HoC(object):
 
-    def __init__(self, source_dir, target_dir, split=None):
-        """
-        source_dir: str or posix path. source directory of raw data
-        target_dir: str or posix path. target directory to save split data
-        split: tuple(int,int,int). train/val/test split proportions
-        """
-        assert isclose(sum(split), 1.0), "split proportions do not add up to 1."
+class HoC():
+    def __init__(self, source_dir, target_dir) -> None:
         
         self.source_dir = Path(source_dir) if type(
             source_dir) is str else source_dir
         self.target_dir = Path(target_dir) if type(
             target_dir) is str else target_dir
-        self.split = split
-
-        self.texts = self.read_texts(self.source_dir / 'text')
-        self.labels = self.read_labels(self.source_dir / 'labels')
+        self.labels = self.get_labels(source_dir)
         
-        target_files = set(
-            [e.name for e in self.target_dir.iterdir() if e.is_file()])
-        
-        # check if there is existing file and split proportions
-        if not set(['hoc_train.csv', 'hoc_val.csv', 'hoc_test.csv']) \
-            .issubset(target_files) and split:
-            self.split_and_save(self.texts, self.labels, self.target_dir, self.split)
-        elif not set(['hoc.csv']).issubset(target_files):
-            self.save_csv(self.texts, self.labels, self.target_dir)
+        self.train_dict = self.read_dataset(source_dir, self.labels, 'train')
+        self.val_dict = self.read_dataset(source_dir, self.labels, 'devel')
+        self.test_dict = self.read_dataset(source_dir, self.labels, 'test')
             
-    def split_and_save(self, texts, labels, target_dir, split):
-        pd.DataFrame(np.array([texts[:int(len(texts) * split[0])],
-                               labels[:int(len(texts) * split[0])]]).T,
-                     columns=['text', 'labels']).to_csv(target_dir / 'hoc_train.csv', sep='\t')
-        pd.DataFrame(np.array([texts[:int(len(texts) * split[1])], 
-                               labels[:int(len(texts) * split[1])]]).T, 
-                     columns=['text', 'labels']).to_csv(target_dir / 'hoc_val.csv', sep='\t')
-        pd.DataFrame(np.array([texts[:int(len(texts) * split[2])], 
-                               labels[:int(len(texts) * split[2])]]).T, 
-                     columns=['text', 'labels']).to_csv(target_dir / 'hoc_test.csv', sep='\t')
+        self.save_csv(self.train_dict, self.target_dir, self.labels, set_='train')
+        self.save_csv(self.val_dict, self.target_dir, self.labels, set_='val')
+        self.save_csv(self.test_dict, self.target_dir, self.labels, set_='test')
     
-    def save_csv(self, texts, labels, target_dir):
-        logging.info("Saving data...")
-        pd.DataFrame(np.array([texts, labels]).T, columns=[
-                     'text', 'labels']).to_csv(target_dir / 'hoc.csv', sep='\t')
 
-    def read_texts(text_dir):
-        files = [x for x in text_dir.iterdir() if x.is_file()]
-        texts = []
-        for file in files:
-            with open(file, 'r', encoding='utf-8') as f:
-                texts.append(f.read())
+    def save_csv(self, data_dict, target_dir, labels, set_='train'):
+        target_files = set(
+            [e.name for e in target_dir.iterdir() if e.is_file()])
+        filename = f"hoc_{set_}.csv"
 
-        return texts
+        if filename not in target_files:
+            pd.DataFrame.from_dict(
+                data_dict, orient='index', columns=labels
+            ).to_csv(target_dir / filename)
 
-    def read_labels(label_dir):
-        label_files = [x for x in label_dir.iterdir() if x.is_file()]
-        all_labels = []
-        for label_file in label_files:
-            with open(label_file) as f:
-                contents = f.read()
-            all_labels.append(contents)
 
-        sample_labels = []
-        for label in all_labels:
-            l = label.replace('<', '').strip().split('--')
-            ll = []
-            for i in l:
-                try:
-                    strings = i.strip().split()[0]
-                    last_upper = 0
-                    count = 0
-                    for s in strings:
-                        if s.isupper():
-                            last_upper = count
-                        count += 1
-                    if last_upper == 0:
-                        ll.append(strings)
-                    else:
-                        ll.append(strings[:last_upper])
-                except:
-                    ll.append('')
-            sample_labels.extend(ll)
+    def read_dataset(self, source_dir, labels, set_='train'):
+        pattern = set_ + '.pos'
+        data_dict = defaultdict(lambda: [])
 
-        sample_labels = list(set(sample_labels))
-        
-        data_labels = []
-        for label in all_labels:
-            data_labels.append(random.choice(
-                label.replace('<', '').strip().split('--')).strip())
+        for file in source_dir.rglob(pattern):
+            self._read_file(file, data_dict, file.parent.name)
 
+        data_dict = {k: self._one_hot(v, labels) for
+                    k, v in data_dict.items()}
+
+        return OrderedDict(sorted(data_dict.items()))
+
+
+    def get_labels(self, source_dir, pattern=r"label-."):
         labels = []
-        for i in data_labels:
-            try:
-                strings = i.strip().split()[0]
-                last_upper = 0
-                count = 0
-                for s in strings:
-                    if s.isupper():
-                        last_upper = count
-                    count += 1
-                if last_upper == 0:
-                    labels.append(sample_labels.index(strings))
-                else:
-                    labels.append(sample_labels.index(strings[:last_upper]))
-            except:
-                labels.append(sample_labels.index(''))
+        for dir_ in source_dir.iterdir():
+            if dir_.is_dir() and re.match(pattern, dir_.name):
+                labels.append(dir_.name)
 
-        return labels
-    
-    @staticmethod
-    def add_model_specific_args(parser):
-
-        parser.add_argument(
-            "--data_path",
-            default="./project/data",
-            type=str,
-            help="Path to directory containing the data.",
-        )
-        parser.add_argument(
-            "--dataset",
-            default="hoc",
-            type=str,
-            help="Dataset chosen. HoC or MTC-5.",
-        )
-        parser.add_argument(
-            "--num_workers",
-            default=8,
-            type=int,
-            help="How many subprocesses to use for data loading. 0 means that \
-                the data will be loaded in the main process.",
-        )
-    
-
-    """ DEPRECATED """
-
-    # def save_csv(self, target_dir):
-    #     self.read_texts()
-    #     self.read_labels()
-    #     pd.DataFrame(np.array([texts, labels]).T, columns=[
-    #                  'TEXT', 'LABEL']).to_csv('./data/hoc.csv', sep='\t')
-    #     pd.DataFrame(np.array([texts[:int(len(texts)*0.2)], labels[:int(
-    #         len(texts)*0.2)]]).T, columns=['TEXT', 'LABEL']).to_csv('./data/hoc_test.csv', sep='\t')
-    #     pd.DataFrame(np.array([texts[:int(len(texts)*0.1)], labels[:int(
-    #         len(texts)*0.1)]]).T, columns=['TEXT', 'LABEL']).to_csv('./data/hoc_val.csv', sep='\t')
+        return sorted(labels)
 
 
+    def _read_file(self, file, data_dict: defaultdict, label):
+        with open(file, 'r', encoding='utf-8') as f:
+            for line in f:
+                if line:
+                    data_dict[line].append(label)
+        return
+
+    def _one_hot(self, target_labels, all_labels):
+        return [int(x in target_labels)
+                for x in all_labels]
+        
 if __name__ == "__main__":
-    # testing
-    hoc = HoC("./project/data/HoC", "./project/data", (0.7,0.15,0.15))
+    data = Path("project\data\HoC")
+    hoc = HoC(data, data)
