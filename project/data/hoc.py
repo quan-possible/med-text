@@ -6,34 +6,36 @@ from collections import defaultdict, OrderedDict
 
 
 class HoC():
-    def __init__(self, source_dir, target_dir, replace_existing=True) -> None:
+    def __init__(self, source_dir, target_dir, new_labels: dict, replace_csv=True) -> None:
         
         self.source_dir = Path(source_dir) if type(
             source_dir) is str else source_dir
         self.target_dir = Path(target_dir) if type(
             target_dir) is str else target_dir
         self.labels = self.get_labels(source_dir)
-        self.replace_existing = replace_existing
+        self.new_labels = [new_labels[label] for label in self.labels]
+        self.replace_csv = replace_csv
+        
         
         self.train_dict = self.read_dataset(source_dir, self.labels, 'train')
         self.val_dict = self.read_dataset(source_dir, self.labels, 'devel')
         self.test_dict = self.read_dataset(source_dir, self.labels, 'test')
             
         self.save_csv(self.train_dict, self.target_dir, 
-                      self.labels, self.replace_existing, set_='train')
-        self.save_csv(self.train_dict, self.target_dir, 
-                      self.labels, self.replace_existing, set_='val')
-        self.save_csv(self.train_dict, self.target_dir,
-                      self.labels, self.replace_existing, set_='test')
+                      self.new_labels, self.replace_csv, set_='train')
+        self.save_csv(self.val_dict, self.target_dir, 
+                      self.new_labels, self.replace_csv, set_='val')
+        self.save_csv(self.test_dict, self.target_dir,
+                      self.new_labels, self.replace_csv, set_='test')
     
     def save_csv(self, data_dict, target_dir, labels, 
-                 replace_existing, set_='train'):
+                 replace_csv, set_):
         target_files = set(
             [e.name for e in target_dir.iterdir() if e.is_file()])
         filename = f"hoc_{set_}.csv"
 
-        if (not replace_existing and filename not in target_files) \
-            or replace_existing:
+        if (not replace_csv and filename not in target_files) \
+            or replace_csv:
                 
             pd.DataFrame.from_dict(
                 data_dict, orient='index', columns=labels
@@ -79,5 +81,18 @@ class HoC():
         
 if __name__ == "__main__":
     SOURCE_DIR, TARGET_DIR = Path("project\data\HoC"), Path("project\data")
-    REPLACE_EXISTING = True
-    hoc = HoC(SOURCE_DIR, TARGET_DIR, REPLACE_EXISTING)
+    REPLACE_CSV = True
+    NEW_LABELS = {
+        "label-1": "Activating invasion and metastasis",
+        "label-2": "Avoiding immune destruction",
+        "label-3": "Cellular energetics",
+        "label-4": "Enabling replicative immortality",
+        "label-5": "Evading growth suppressors",
+        "label-6": "Genomic instability and mutation",
+        "label-7": "Inducing angiogenesis",
+        "label-8": "Resisting cell death",
+        "label-9": "Sustaining proliferative signaling",
+        "label-a": "Tumor promoting inflammation",
+    }
+    
+    hoc = HoC(SOURCE_DIR, TARGET_DIR, NEW_LABELS, REPLACE_CSV)
