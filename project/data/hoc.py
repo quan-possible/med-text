@@ -6,32 +6,38 @@ from collections import defaultdict, OrderedDict
 
 
 class HoC():
-    def __init__(self, source_dir, target_dir) -> None:
+    def __init__(self, source_dir, target_dir, replace_existing=True) -> None:
         
         self.source_dir = Path(source_dir) if type(
             source_dir) is str else source_dir
         self.target_dir = Path(target_dir) if type(
             target_dir) is str else target_dir
         self.labels = self.get_labels(source_dir)
+        self.replace_existing = replace_existing
         
         self.train_dict = self.read_dataset(source_dir, self.labels, 'train')
         self.val_dict = self.read_dataset(source_dir, self.labels, 'devel')
         self.test_dict = self.read_dataset(source_dir, self.labels, 'test')
             
-        self.save_csv(self.train_dict, self.target_dir, self.labels, set_='train')
-        self.save_csv(self.val_dict, self.target_dir, self.labels, set_='val')
-        self.save_csv(self.test_dict, self.target_dir, self.labels, set_='test')
+        self.save_csv(self.train_dict, self.target_dir, 
+                      self.labels, self.replace_existing, set_='train')
+        self.save_csv(self.train_dict, self.target_dir, 
+                      self.labels, self.replace_existing, set_='val')
+        self.save_csv(self.train_dict, self.target_dir,
+                      self.labels, self.replace_existing, set_='test')
     
-
-    def save_csv(self, data_dict, target_dir, labels, set_='train'):
+    def save_csv(self, data_dict, target_dir, labels, 
+                 replace_existing, set_='train'):
         target_files = set(
             [e.name for e in target_dir.iterdir() if e.is_file()])
         filename = f"hoc_{set_}.csv"
 
-        if filename not in target_files:
+        if (replace_existing and filename not in target_files) \
+            or not replace_existing:
+                
             pd.DataFrame.from_dict(
                 data_dict, orient='index', columns=labels
-            ).to_csv(target_dir / filename)
+            ).to_csv(target_dir / filename, sep='\t')
 
 
     def read_dataset(self, source_dir, labels, set_='train'):
@@ -41,8 +47,7 @@ class HoC():
         for file in source_dir.rglob(pattern):
             self._read_file(file, data_dict, file.parent.name)
 
-        data_dict = {k: self._one_hot(v, labels) for
-                    k, v in data_dict.items()}
+        data_dict = {k: self._one_hot(v, labels) for k, v in data_dict.items()}
 
         return OrderedDict(sorted(data_dict.items()))
 
@@ -60,13 +65,14 @@ class HoC():
         with open(file, 'r', encoding='utf-8') as f:
             for line in f:
                 if line:
-                    data_dict[line].append(label)
+                    processed_line = line.strip().replace('\n', '')
+                    data_dict[processed_line].append(label)
         return
 
     def _one_hot(self, target_labels, all_labels):
-        return [int(x in target_labels)
-                for x in all_labels]
+        return [int(x in target_labels) for x in all_labels]
         
 if __name__ == "__main__":
     SOURCE_DIR, TARGET_DIR = Path("project\data\HoC"), Path("project\data")
-    hoc = HoC(SOURCE_DIR, TARGET_DIR)
+    REPLACE_EXISTING = True
+    hoc = HoC(SOURCE_DIR, TARGET_DIR, REPLACE_EXISTING)
