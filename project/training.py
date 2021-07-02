@@ -34,7 +34,7 @@ def main(hparams) -> None:
     datamodule = DataModule(
         tokenizer, collator, hparams.data_path,
         hparams.dataset, hparams.batch_size, hparams.num_workers,
-        hparams.txt_col_name, hparams.lbl_col_name
+        # hparams.txt_col_name, hparams.lbl_col_name
     )
 
     n_classes = datamodule.n_classes
@@ -51,7 +51,7 @@ def main(hparams) -> None:
     # ------------------------
     early_stop_callback = EarlyStopping(
         monitor=hparams.monitor,
-        min_delta=0.0,
+        min_delta=hparams.early_stop_min_delta,
         patience=hparams.patience,
         verbose=True,
         mode=hparams.metric_mode,
@@ -189,6 +189,15 @@ if __name__ == "__main__":
         help=(
             "If you don't want to use the entire dev set (for debugging or "
             "if it's huge), set how much of the dev set you want to use with this flag."
+        ),
+    )
+    
+    parser.add_argument(
+        "--early_stop_min_delta",
+        default=0.0,
+        type=float,
+        help=(
+            "Delta for early stopping the model"
         ),
     )
 

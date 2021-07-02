@@ -33,7 +33,8 @@ class Classifier(pl.LightningModule):
     def __init__(self, tokenizer, collator, encoder_model,
                  batch_size, n_classes, nr_frozen_epochs,
                  #  label_encoder,
-                 encoder_learning_rate, learning_rate,) -> None:
+                 encoder_learning_rate, learning_rate,
+                 ) -> None:
         super(Classifier, self).__init__()
 
         self.tokenizer = tokenizer
@@ -183,8 +184,15 @@ class Classifier(pl.LightningModule):
         inputs, targets = batch
         model_out = self.forward(inputs)
         loss = self.loss(model_out, targets)
-
+        
+        # acc
+        y = targets["labels"]
+        logits = model_out["logits"]
+        preds = torch.argmax(logits, dim=1)
+        acc = torch.sum(y == preds).item() / (len(y) * 1.0)
+        
         self.log("loss", loss)
+        self.log("acc", acc, prog_bar=True)
 
         return loss
 
@@ -207,20 +215,23 @@ class Classifier(pl.LightningModule):
         val_acc = torch.sum(y == preds).item() / (len(y) * 1.0)
 
         # f1
-        val_f1 = f1(preds, y, num_classes=self.n_classes)
+        val_f1 = f1(preds, y, num_classes=self.n_classes, average='macro')
 
         # precision and recall
-        val_precision, val_recall = precision_recall(preds, y, 
-                                                     num_classes=self.n_classes)
+        val_precision, val_recall = precision_recall(
+            preds, y, num_classes=self.n_classes, average='macro')
 
-        output = OrderedDict({"val_loss": loss, "val_acc": val_acc,
-                              "val_f1": val_f1, "val_precision": val_precision,
+        loss_acc = OrderedDict({"val_loss": loss, "val_acc": val_acc})
+        metrics = OrderedDict({"val_f1": val_f1, "val_precision": val_precision,
                               "val_recall": val_recall})
-        self.log_dict(output, prog_bar=True)
-        self.log_dict
+        
+        self.log_dict(loss_acc, prog_bar=True)
+        self.log_dict(metrics, prog_bar=True)
+        
+        
 
-        # can also return just a scalar instead of a dict (return loss_val)
-        return output
+        # # can also return just a scalar instead of a dict (return loss_val)
+        return loss_acc
 
     def configure_optimizers(self):
         """ Sets different Learning rates for different parameter groups. """

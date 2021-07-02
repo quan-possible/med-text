@@ -60,8 +60,7 @@ class Collator(object):
 class DataModule(pl.LightningDataModule):
     
     def __init__(self, tokenizer, collator, data_path: str, dataset,
-                 batch_size, num_workers, txt_col_name="TEXT", 
-                 lbl_col_name="LABEL", rand_sampling=True):
+                 batch_size, num_workers, rand_sampling=True):
         super().__init__()
         
         self.data_path = Path(data_path) if type(
@@ -73,13 +72,12 @@ class DataModule(pl.LightningDataModule):
         
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.lbl_col_name = lbl_col_name
-        self.txt_col_name = txt_col_name
+        self.tgt_txt_col, self.tgt_lbl_col = "TEXT", "LABEL"
         
         self.sampler = RandomSampler if rand_sampling \
             else SequentialSampler
         
-        self.n_classes = 36 if self.dataset == 'hoc' else 6
+        self.n_classes = 36 if self.dataset == 'hoc' else 5
 
     
     def prepare_data(self):
@@ -89,13 +87,16 @@ class DataModule(pl.LightningDataModule):
     def setup(self, stage=None):
         if stage in (None, "fit"):
             self._train_dataset = self.read_csv(self.data_path / 
-                                                f"{self.dataset}_train.csv")
+                                                f"{self.dataset}_train.csv", 
+                                                self.dataset)
             self._val_dataset = self.read_csv(self.data_path / 
-                                            f"{self.dataset}_val.csv")
+                                            f"{self.dataset}_val.csv", 
+                                            self.dataset)
             
         if stage in (None, 'test'):
             self._test_dataset = self.read_csv(self.data_path / 
-                                                f"{self.dataset}_test.csv")
+                                                f"{self.dataset}_test.csv",
+                                                self.dataset)
         
 
     def train_dataloader(self) -> DataLoader:
@@ -127,8 +128,9 @@ class DataModule(pl.LightningDataModule):
         )
     
     @staticmethod
-    def read_csv(file_path: str, txt_col_name="TEXT",
-                  lbl_col_name="LABEL") -> list:
+    def read_csv(file_path: str, dataset,
+                 tgt_txt_col="TEXT", 
+                 tgt_lbl_col="LABEL") -> list:
         """ Reads a comma separated value file.
 
         :param path: path to a csv file.
@@ -138,10 +140,11 @@ class DataModule(pl.LightningDataModule):
             - Number of classes
         """
         df = pd.read_csv(file_path, sep='\t', index_col=0,)
-        df['text'] = df[txt_col_name].astype(str)
-        df['labels'] = df[lbl_col_name]
+        df["text"] = df[tgt_txt_col].astype(str)
+        df["labels"] = df[tgt_lbl_col] if dataset == 'hoc' \
+            else df[tgt_lbl_col] - 1
         
-        return df[['text','labels']].to_dict("records")
+        return df[['text', 'labels']].to_dict("records")
 
     @staticmethod
     def add_model_specific_args(parser):
@@ -154,9 +157,9 @@ class DataModule(pl.LightningDataModule):
         )
         parser.add_argument(
             "--dataset",
-            default="hoc",
+            default="mtc",
             type=str,
-            help="Dataset chosen. HoC or MTC-5.",
+            help="Dataset chosen. 'hoc' (HoC) or 'mtc' (MTC-5).",
         )
         parser.add_argument(
             "--num_workers",
@@ -185,21 +188,23 @@ class DataModule(pl.LightningDataModule):
 
 if __name__ == "__main__":
     
-    MODEL = "bert-base-uncased"
+    MODEL = "bert-base-cased"
     DATA_PATH = "./project/data"
-    DATASET = "hoc"
+    DATASET = "mtc"
     BATCH_SIZE = 2
     NUM_WORKERS = 2
+    RANDOM_SAMPLING = False
+    
     tokenizer = Tokenizer(MODEL)
     collator = Collator(tokenizer)
     datamodule = DataModule(
         tokenizer, collator, DATA_PATH, 
-        DATASET, BATCH_SIZE, NUM_WORKERS
+        DATASET, BATCH_SIZE, NUM_WORKERS, RANDOM_SAMPLING
     )
     
     datamodule.setup()
     
-    print(next(iter(datamodule.train_dataloader()))[1])
+    print(next(iter(datamodule.train_dataloader())))
     
     ### TODO: Write unit test
     

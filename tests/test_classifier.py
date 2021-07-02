@@ -1,13 +1,13 @@
 import sys
-sys.path.insert(0, 'D:/OneDrive - Aalto University/Courses/Thesis/med-text')
+sys.path.insert(0, 'project')
 # TODO: Find a better way.
 
 import torch
 
 from pytorch_lightning import seed_everything
-from project.classifier import Classifier
-from project.datamodule import DataModule, Collator
-from project.tokenizer import Tokenizer
+from classifier import Classifier
+from datamodule import DataModule, Collator
+from tokenizer import Tokenizer
 
 
 class TestModel():
@@ -25,6 +25,8 @@ class TestModel():
         err_msg = "Incorrect output shape!"
         assert res.size() == torch.Size(
             [batch_size, n_classes]), err_msg
+        
+        print("Shapes look good!")
         
     def _training_step(self, batch):
         # put model in train mode
@@ -85,15 +87,18 @@ class TestModel():
                     or (not vars_change and not torch.equal(p0, p1)):
                     suspects.append(name)
 
-        assert len(suspects) == 0, f"{suspects}{' did not change!' if vars_change else 'changed!'}"
+        err_msg = f"{suspects}{' did not change!' if vars_change else 'changed!'} after optimization."
+        assert len(suspects) == 0, err_msg
+        
+        print("Parameters changed after optimization!")
     
 
 if __name__ == "__main__":
     
     BATCH_SIZE = 2
-    ENCODER_MODEL = "bert-base-uncased"
+    ENCODER_MODEL = "bert-base-cased"
     DATA_PATH = "./project/data"
-    DATASET = "hoc"
+    DATASET = "mtc"
     NUM_WORKERS = 2
     NR_FROZEN_EPOCHS = 0
     ENCODER_LEARNING_RATE = 1e-05
