@@ -32,8 +32,8 @@ class HoC():
             [e.name for e in target_dir.iterdir() if e.is_file()])
         filename = f"hoc_{set_}.csv"
 
-        if (replace_existing and filename not in target_files) \
-            or not replace_existing:
+        if (not replace_existing and filename not in target_files) \
+            or replace_existing:
                 
             pd.DataFrame.from_dict(
                 data_dict, orient='index', columns=labels
@@ -41,7 +41,7 @@ class HoC():
 
 
     def read_dataset(self, source_dir, labels, set_='train'):
-        pattern = set_ + '.pos'
+        pattern = set_ + '.*'
         data_dict = defaultdict(lambda: [])
 
         for file in source_dir.rglob(pattern):
@@ -62,11 +62,16 @@ class HoC():
 
 
     def _read_file(self, file, data_dict: defaultdict, label):
+        pos = re.match(".*\.pos", file.name)
+        
         with open(file, 'r', encoding='utf-8') as f:
             for line in f:
                 if line:
                     processed_line = line.strip().replace('\n', '')
-                    data_dict[processed_line].append(label)
+                    if pos:
+                        data_dict[processed_line].append(label)
+                    else:
+                        data_dict[processed_line]
         return
 
     def _one_hot(self, target_labels, all_labels):
