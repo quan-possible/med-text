@@ -34,7 +34,7 @@ def main(hparams) -> None:
     datamodule = DataModule(
         tokenizer, collator, hparams.data_path,
         hparams.dataset, hparams.batch_size, hparams.num_workers,
-        # hparams.txt_col_name, hparams.lbl_col_name
+        hparams.tgt_txt_col, hparams.tgt_lbl_col
     )
 
     n_classes = datamodule.n_classes

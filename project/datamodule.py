@@ -60,7 +60,8 @@ class Collator(object):
 class DataModule(pl.LightningDataModule):
     
     def __init__(self, tokenizer, collator, data_path: str, dataset,
-                 batch_size, num_workers, rand_sampling=True):
+                 batch_size, num_workers, tgt_txt_col, 
+                 tgt_lbl_col, rand_sampling=True):
         super().__init__()
         
         self.data_path = Path(data_path) if type(
@@ -72,7 +73,7 @@ class DataModule(pl.LightningDataModule):
         
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.tgt_txt_col, self.tgt_lbl_col = "TEXT", "LABEL"
+        self.tgt_txt_col, self.tgt_lbl_col = tgt_txt_col, tgt_lbl_col
         
         self.sampler = RandomSampler if rand_sampling \
             else SequentialSampler
@@ -142,7 +143,7 @@ class DataModule(pl.LightningDataModule):
         df = pd.read_csv(file_path, sep='\t', index_col=0,)
         df["text"] = df[tgt_txt_col].astype(str)
         df["labels"] = df[tgt_lbl_col] if dataset == 'hoc' \
-            else df[tgt_lbl_col] - 1
+            else df[tgt_lbl_col] - 1        # source LABEL starts from 1 
         
         return df[['text', 'labels']].to_dict("records")
 
@@ -170,14 +171,14 @@ class DataModule(pl.LightningDataModule):
         )
         
         parser.add_argument(
-            "--txt_col_name",
+            "--tgt_txt_col",
             default="TEXT",
             type=str,
             help="Column name of the texts in the csv files.",
         )
         
         parser.add_argument(
-            "--lbl_col_name",
+            "--tgt_lbl_col",
             default="LABEL",
             type=str,
             help="Column name of the labels in the csv files.",
