@@ -189,7 +189,7 @@ class Classifier(pl.LightningModule):
         y = targets["labels"]
         logits = model_out["logits"]
         preds = torch.argmax(logits, dim=1)
-        acc = torch.sum(y == preds).item() / (len(y) * 1.0)
+        acc = torch.sum(y == preds).type_as(y) / (len(y) * 1.0)
         
         self.log("loss", loss)
         self.log("acc", acc, prog_bar=True)
@@ -212,7 +212,7 @@ class Classifier(pl.LightningModule):
         preds = torch.argmax(logits, dim=1)
 
         # acc
-        val_acc = torch.sum(y == preds).item() / (len(y) * 1.0)
+        val_acc = torch.sum(y == preds).type_as(y) / (len(y) * 1.0)
 
         # f1
         val_f1 = f1(preds, y, num_classes=self.n_classes, average='macro')
@@ -225,8 +225,8 @@ class Classifier(pl.LightningModule):
         metrics = OrderedDict({"val_f1": val_f1, "val_precision": val_precision,
                               "val_recall": val_recall})
         
-        self.log_dict(loss_acc, prog_bar=True)
-        self.log_dict(metrics, prog_bar=True)
+        self.log_dict(loss_acc, prog_bar=True, sync_dist=True)
+        self.log_dict(metrics, prog_bar=True, sync_dist=True)
         
         
 
@@ -274,7 +274,7 @@ class Classifier(pl.LightningModule):
         )
         parser.add_argument(
             "--nr_frozen_epochs",
-            default=0,
+            default=1,
             type=int,
             help="Number of epochs we want to keep the encoder model frozen.",
         )

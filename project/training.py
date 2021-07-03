@@ -128,7 +128,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--save_top_k",
-        default=1,
+        default=2,
         type=int,
         help="The best k models according to the quantity monitored will be saved.",
     )
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--patience",
-        default=3,
+        default=5,
         type=int,
         help=(
             "Number of epochs with no improvement "
@@ -161,14 +161,14 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--max_epochs",
-        default=20,
+        default=25,
         type=int,
         help="Limits training to a max number number of epochs",
     )
 
     # Batching
     parser.add_argument(
-        "--batch_size", default=8, type=int, help="Batch size to be used."
+        "--batch_size", default=16, type=int, help="Batch size to be used."
     )
     parser.add_argument(
         "--accumulate_grad_batches",
