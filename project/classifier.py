@@ -20,7 +20,7 @@ from datamodule import DataModule, Collator
 from torchnlp.encoders import LabelEncoder
 from torchnlp.utils import lengths_to_mask
 from pytorch_lightning.utilities.seed import seed_everything
-from utils import mask_fill
+from utils import mask_fill, dotdict
 
 
 class Classifier(pl.LightningModule):
@@ -30,13 +30,14 @@ class Classifier(pl.LightningModule):
     :param hparams: ArgumentParser containing the hyperparameters.
     """
 
-    def __init__(self, tokenizer, collator, encoder_model,
+    def __init__(self, hparams, tokenizer, collator, encoder_model,
                  batch_size, n_classes, nr_frozen_epochs,
                  #  label_encoder,
                  encoder_learning_rate, learning_rate,
                  ) -> None:
         super(Classifier, self).__init__()
 
+        # self.hparams = hparams
         self.tokenizer = tokenizer
         self.collator = collator
 
@@ -46,6 +47,13 @@ class Classifier(pl.LightningModule):
         self.encoder_model = encoder_model
         self.encoder_learning_rate = encoder_learning_rate
         self.learning_rate = learning_rate
+        
+        self.save_hyperparameters(
+            # "batch_size", 
+            # "nr_frozen_epochs", "encoder_learning_rate", 
+            # "learning rate", 
+            hparams,
+        )
 
         # build model
         self.__build_model()
@@ -318,31 +326,45 @@ class Classifier(pl.LightningModule):
 
     #     return result
 if __name__ == "__main__":
-    ENCODER_MODEL = "bert-base-uncased"
-    DATA_PATH = "./project/data"
-    DATASET = "hoc"
-    BATCH_SIZE = 2
-    NUM_WORKERS = 2
-    NR_FROZEN_EPOCHS = 1
-    ENCODER_LEARNING_RATE = 1e-05
-    LEARNING_RATE = 3e-05
+    # ENCODER_MODEL = "bert-base-uncased"
+    # DATA_PATH = "./project/data"
+    # DATASET = "hoc"
+    # BATCH_SIZE = 2
+    # NUM_WORKERS = 2
+    # NR_FROZEN_EPOCHS = 1
+    # ENCODER_LEARNING_RATE = 1e-05
+    # LEARNING_RATE = 3e-05
 
     seed_everything(69)
 
-    tokenizer = Tokenizer(ENCODER_MODEL)
-    collator = Collator(tokenizer)
-    datamodule = DataModule(
-        tokenizer, collator, DATA_PATH,
-        DATASET, BATCH_SIZE, NUM_WORKERS,
-        rand_sampling=False
+    hparams = dotdict(
+        encoder_model="bert-base-cased",
+        data_path="./project/data",
+        dataset="mtc",
+        batch_size=2,
+        num_workers=2,
+        random_sampling=False,
+        nr_frozen_epochs=1,
+        encoder_learning_rate=1e-05,
+        learning_rate=3e-05,
+        tgt_txt_col="TEXT",
+        tgt_lbl_col="LABEL",
     )
 
-    n_classes = datamodule.n_classes
+    tokenizer = Tokenizer(hparams.encoder_model)
+    collator = Collator(tokenizer)
+    datamodule = DataModule(
+        tokenizer, collator, hparams.data_path,
+        hparams.dataset, hparams.batch_size, hparams.num_workers,
+        hparams.tgt_txt_col, hparams.tgt_lbl_col,
+    )
+
+    num_classes = datamodule.num_classes
 
     model = Classifier(
-        tokenizer, collator, ENCODER_MODEL,
-        BATCH_SIZE, n_classes, NR_FROZEN_EPOCHS,
-        ENCODER_LEARNING_RATE, LEARNING_RATE,
+        hparams, tokenizer, collator, hparams.encoder_model,
+        hparams.batch_size, num_classes, hparams.nr_frozen_epochs,
+        hparams.encoder_learning_rate, hparams.learning_rate,
     )
 
     trainer = pl.Trainer()

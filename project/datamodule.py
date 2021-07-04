@@ -19,6 +19,8 @@ from transformers import AutoModel
 
 import pytorch_lightning as pl
 from tokenizer import Tokenizer
+from utils import dotdict
+from pytorch_lightning.utilities.seed import seed_everything
 from torchnlp.encoders import LabelEncoder
 from torchnlp.utils import collate_tensors, lengths_to_mask
 # from utils import mask_fill
@@ -61,7 +63,7 @@ class DataModule(pl.LightningDataModule):
     
     def __init__(self, tokenizer, collator, data_path: str, dataset,
                  batch_size, num_workers, tgt_txt_col, 
-                 tgt_lbl_col, rand_sampling=True):
+                 tgt_lbl_col):
         super().__init__()
         
         self.data_path = Path(data_path) if type(
@@ -75,10 +77,7 @@ class DataModule(pl.LightningDataModule):
         self.num_workers = num_workers
         self.tgt_txt_col, self.tgt_lbl_col = tgt_txt_col, tgt_lbl_col
         
-        self.sampler = RandomSampler if rand_sampling \
-            else SequentialSampler
-        
-        self.n_classes = 36 if self.dataset == 'hoc' else 5
+        self.num_classes = 36 if self.dataset == 'hoc' else 5
 
     
     def prepare_data(self):
@@ -104,7 +103,6 @@ class DataModule(pl.LightningDataModule):
         """ Function that loads the train set. """
         return DataLoader(
             dataset=self._train_dataset,
-            sampler=self.sampler(self._train_dataset),
             batch_size=self.batch_size,
             collate_fn=self.collator,
             num_workers=self.num_workers,
@@ -189,18 +187,28 @@ class DataModule(pl.LightningDataModule):
 
 if __name__ == "__main__":
     
-    MODEL = "bert-base-cased"
-    DATA_PATH = "./project/data"
-    DATASET = "mtc"
-    BATCH_SIZE = 2
-    NUM_WORKERS = 2
-    RANDOM_SAMPLING = False
+    seed_everything(69)
     
-    tokenizer = Tokenizer(MODEL)
+    hparams = dotdict(
+        encoder_model="bert-base-cased",
+        data_path="./project/data",
+        dataset="mtc",
+        batch_size=2,
+        num_workers=2,
+        random_sampling=False,
+        nr_frozen_epochs=1,
+        encoder_learning_rate=1e-05,
+        learning_rate=3e-05,
+        tgt_txt_col="TEXT",
+        tgt_lbl_col="LABEL",
+    )
+
+    tokenizer = Tokenizer(hparams.encoder_model)
     collator = Collator(tokenizer)
     datamodule = DataModule(
-        tokenizer, collator, DATA_PATH, 
-        DATASET, BATCH_SIZE, NUM_WORKERS, RANDOM_SAMPLING
+        tokenizer, collator, hparams.data_path,
+        hparams.dataset, hparams.batch_size, hparams.num_workers,
+        hparams.tgt_txt_col, hparams.tgt_lbl_col,
     )
     
     datamodule.setup()

@@ -8,6 +8,7 @@ from pytorch_lightning import seed_everything
 from classifier import Classifier
 from datamodule import DataModule, Collator
 from tokenizer import Tokenizer
+from utils import dotdict
 
 
 class TestModel():
@@ -95,32 +96,36 @@ class TestModel():
 
 if __name__ == "__main__":
     
-    BATCH_SIZE = 2
-    ENCODER_MODEL = "bert-base-cased"
-    DATA_PATH = "./project/data"
-    DATASET = "mtc"
-    NUM_WORKERS = 2
-    NR_FROZEN_EPOCHS = 0
-    ENCODER_LEARNING_RATE = 1e-05
-    LEARNING_RATE = 3e-05
-    RANDOM_SAMPLING = False
-
     seed_everything(69)
 
-    tokenizer = Tokenizer(ENCODER_MODEL)
-    collator = Collator(tokenizer)
-    datamodule = DataModule(
-        tokenizer, collator, DATA_PATH,
-        DATASET, BATCH_SIZE, NUM_WORKERS,
-        rand_sampling=RANDOM_SAMPLING,
+    hparams = dotdict(
+        encoder_model="bert-base-cased",
+        data_path="./project/data",
+        dataset="mtc",
+        batch_size=2,
+        num_workers=2,
+        random_sampling=False,
+        nr_frozen_epochs=1,
+        encoder_learning_rate=1e-05,
+        learning_rate=3e-05,
+        tgt_txt_col="TEXT",
+        tgt_lbl_col="LABEL",
     )
 
-    n_classes = datamodule.n_classes
+    tokenizer = Tokenizer(hparams.encoder_model)
+    collator = Collator(tokenizer)
+    datamodule = DataModule(
+        tokenizer, collator, hparams.data_path,
+        hparams.dataset, hparams.batch_size, hparams.num_workers,
+        hparams.tgt_txt_col, hparams.tgt_lbl_col,
+    )
+
+    num_classes = datamodule.num_classes
 
     model = Classifier(
-        tokenizer, collator, ENCODER_MODEL,
-        BATCH_SIZE, n_classes, NR_FROZEN_EPOCHS,
-        ENCODER_LEARNING_RATE, LEARNING_RATE,
+        hparams, tokenizer, collator, hparams.encoder_model,
+        hparams.batch_size, num_classes, hparams.nr_frozen_epochs,
+        hparams.encoder_learning_rate, hparams.learning_rate,
     )
     
     datamodule.setup()
@@ -128,7 +133,7 @@ if __name__ == "__main__":
     # print(batch)
     
     test_obj = TestModel(model)
-    test_obj.test_shape(batch, BATCH_SIZE, n_classes)
+    test_obj.test_shape(batch, hparams.batch_size, num_classes)
     test_obj.test_params_update(batch)
     
     print("Test successful!")

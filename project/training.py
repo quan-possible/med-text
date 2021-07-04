@@ -37,11 +37,11 @@ def main(hparams) -> None:
         hparams.tgt_txt_col, hparams.tgt_lbl_col
     )
 
-    n_classes = datamodule.n_classes
+    num_classes = datamodule.num_classes
 
     model = Classifier(
-        tokenizer, collator,
-        hparams.encoder_model, hparams.batch_size, n_classes,
+        hparams, tokenizer, collator,
+        hparams.encoder_model, hparams.batch_size, num_classes,
         hparams.nr_frozen_epochs, hparams.encoder_learning_rate,
         hparams.learning_rate,
     )
@@ -62,7 +62,7 @@ def main(hparams) -> None:
     # ------------------------
     # Tensorboard Callback
     tb_logger = TensorBoardLogger(
-        save_dir="experiments/",
+        save_dir="lyta-experiments/",
         version="version_" + datetime.now().strftime("%d-%m-%Y--%H-%M-%S"),
         name="",
     )
@@ -198,6 +198,15 @@ if __name__ == "__main__":
         type=float,
         help=(
             "Delta for early stopping the model"
+        ),
+    )
+    
+    parser.add_argument(
+        "--log_dir",
+        default="lyta-experiments/",
+        type=str,
+        help=(
+            "Logging of experiments and hparams directory."
         ),
     )
 

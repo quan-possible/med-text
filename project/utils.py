@@ -19,3 +19,9 @@ def mask_fill(
     """
     padding_mask = tokens.eq(padding_index).unsqueeze(-1)
     return embeddings.float().masked_fill_(padding_mask, fill_value).type_as(embeddings)
+
+class dotdict(dict):
+    """dot.notation access to dictionary attributes"""
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
