@@ -123,7 +123,7 @@ class DataModule(pl.LightningDataModule):
             dataset=self._test_dataset,
             batch_size=self.batch_size,
             collate_fn=self.collator,
-            num_workers=self.loader_workers,
+            num_workers=self.num_workers,
         )
     
     @staticmethod

@@ -108,6 +108,8 @@ def main(hparams) -> None:
     # 6 START TRAINING
     # ------------------------
     trainer.fit(model, datamodule)
+    
+    trainer.test()
 
 
 if __name__ == "__main__":

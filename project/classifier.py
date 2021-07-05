@@ -31,7 +31,7 @@ class Classifier(pl.LightningModule):
     """
 
     def __init__(self, hparams, tokenizer, collator, encoder_model,
-                 batch_size, n_classes, nr_frozen_epochs,
+                 batch_size, num_classes, nr_frozen_epochs,
                  #  label_encoder,
                  encoder_learning_rate, learning_rate,
                  ) -> None:
@@ -42,7 +42,7 @@ class Classifier(pl.LightningModule):
         self.collator = collator
 
         self.batch_size = batch_size
-        self.n_classes = n_classes
+        self.num_classes = num_classes
         # self.label_encoder = label_encoder
         self.encoder_model = encoder_model
         self.encoder_learning_rate = encoder_learning_rate
@@ -86,7 +86,7 @@ class Classifier(pl.LightningModule):
             nn.Tanh(),
             nn.Linear(self.encoder_features * 2, self.encoder_features),
             nn.Tanh(),
-            nn.Linear(self.encoder_features, self.n_classes),
+            nn.Linear(self.encoder_features, self.num_classes),
         )
 
     def forward(self, tokens_lengths):
@@ -170,7 +170,7 @@ class Classifier(pl.LightningModule):
         """
         Computes Loss value according to a loss function.
         :param predictions: model specific output. Must contain a key 'logits' with
-            a tensor [batch_size x n_classes] with model predictions
+            a tensor [batch_size x num_classes] with model predictions
         :param labels: Label values [batch_size]
 
         Returns:
@@ -178,13 +178,13 @@ class Classifier(pl.LightningModule):
         """
         return self.loss_fn(predictions["logits"], targets["labels"])
 
-    def training_step(self, batch: tuple, batch_nb: int, *args, **kwargs) -> dict:
+    def training_step(self, batch: tuple, batch_idx: int, *args, **kwargs) -> dict:
         """ 
         Runs one training step. This usually consists in the forward function followed
             by the loss function.
         
         :param batch: The output of your dataloader. 
-        :param batch_nb: Integer displaying which batch this is
+        :param batch_idx: Integer displaying which batch this is
 
         Returns:
             - dictionary containing the loss and the metrics to be added to the lightning logger.
@@ -204,7 +204,7 @@ class Classifier(pl.LightningModule):
 
         return loss
 
-    def validation_step(self, batch: tuple, batch_nb: int, *args, **kwargs) -> dict:
+    def validation_step(self, batch: tuple, batch_idx: int, *args, **kwargs) -> dict:
         """ Similar to the training step but with the model in eval mode.
 
         Returns:
@@ -223,11 +223,11 @@ class Classifier(pl.LightningModule):
         val_acc = torch.sum(y == preds).type_as(y) / (len(y) * 1.0)
 
         # f1
-        val_f1 = f1(preds, y, num_classes=self.n_classes, average='macro')
+        val_f1 = f1(preds, y, num_classes=self.num_classes, average='macro')
 
         # precision and recall
         val_precision, val_recall = precision_recall(
-            preds, y, num_classes=self.n_classes, average='macro')
+            preds, y, num_classes=self.num_classes, average='macro')
 
         loss_acc = OrderedDict({"val_loss": loss, "val_acc": val_acc})
         metrics = OrderedDict({"val_f1": val_f1, "val_precision": val_precision,
@@ -236,10 +236,33 @@ class Classifier(pl.LightningModule):
         self.log_dict(loss_acc, prog_bar=True, sync_dist=True)
         self.log_dict(metrics, prog_bar=True, sync_dist=True)
         
-        
-
         # # can also return just a scalar instead of a dict (return loss_val)
         return loss_acc
+    
+    def test_step(self, batch: tuple, batch_idx: int, *args, **kwargs):
+        inputs, targets = batch
+        model_out = self.forward(inputs)
+        
+        y = targets["labels"]
+        logits = model_out["logits"]
+        
+        preds = torch.argmax(logits, dim=1)
+        
+        # acc
+        test_acc = torch.sum(y == preds).type_as(y) / (len(y) * 1.0)
+        
+        # f1
+        test_f1 = f1(preds, y, num_classes=self.num_classes, average='macro')
+        
+        # precision and recall
+        test_precision, test_recall = precision_recall(
+            preds, y, num_classes=self.num_classes, average='macro')
+        
+        metrics = OrderedDict({"val_acc": test_acc, "val_f1": test_f1, 
+                               "val_precision": test_precision,
+                               "val_recall": test_recall})
+        self.log_dict(metrics)
+        
 
     def configure_optimizers(self):
         """ Sets different Learning rates for different parameter groups. """
