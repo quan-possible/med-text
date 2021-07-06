@@ -9,7 +9,7 @@ from pytorch_lightning import callbacks
 from pytorch_lightning.core import datamodule
 
 from classifier import Classifier
-from datamodule import DataModule, Collator
+from datamodule import MedDataModule, Collator
 from tokenizer import Tokenizer
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
@@ -31,7 +31,7 @@ def main(hparams) -> None:
 
     tokenizer = Tokenizer(hparams.encoder_model)
     collator = Collator(tokenizer)
-    datamodule = DataModule(
+    datamodule = MedDataModule(
         tokenizer, collator, hparams.data_path,
         hparams.dataset, hparams.batch_size, hparams.num_workers,
         hparams.tgt_txt_col, hparams.tgt_lbl_col
@@ -213,7 +213,7 @@ if __name__ == "__main__":
     )
 
     # each LightningModule defines arguments relevant to it
-    parser = DataModule.add_model_specific_args(parser)
+    parser = MedDataModule.add_model_specific_args(parser)
     parser = Classifier.add_model_specific_args(parser)
     hparams = parser.parse_args()
 

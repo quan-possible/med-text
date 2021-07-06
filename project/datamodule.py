@@ -54,50 +54,46 @@ class Collator(object):
         if not self.prepare_targets:
             return inputs, {}
 
-        # print(type(sample["labels"]))
-        # print(inputs["tokens"].size())
         targets = {"labels": torch.tensor(sample["labels"])}
         return inputs, targets
 
-class DataModule(pl.LightningDataModule):
-    
+
+class MedDataModule(pl.LightningDataModule):
+
     def __init__(self, tokenizer, collator, data_path: str, dataset,
-                 batch_size, num_workers, tgt_txt_col, 
-                 tgt_lbl_col):
+                 batch_size, num_workers):
         super().__init__()
-        
+
         self.data_path = Path(data_path) if type(
             data_path) is str else data_path
         self.dataset = dataset.strip().lower()
 
         self.tokenizer = tokenizer
         self.collator = collator
-        
+
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.tgt_txt_col, self.tgt_lbl_col = tgt_txt_col, tgt_lbl_col
-        
-        self.num_classes = 36 if self.dataset == 'hoc' else 5
 
-    
+        if self.dataset == 'hoc':
+            self.read_csv = MedDataModule.read_hoc
+            self.num_classes = 10
+        else:
+            self.read_csv = MedDataModule.read_mtc
+            self.num_classes = 5
+
     def prepare_data(self):
         pass
-        
-    
+
     def setup(self, stage=None):
         if stage in (None, "fit"):
-            self._train_dataset = self.read_csv(self.data_path / 
-                                                f"{self.dataset}_train.csv", 
-                                                self.dataset)
-            self._val_dataset = self.read_csv(self.data_path / 
-                                            f"{self.dataset}_val.csv", 
-                                            self.dataset)
-            
+            self._train_dataset = self.read_csv(self.data_path /
+                                                f"{self.dataset}_train.csv")
+            self._val_dataset = self.read_csv(self.data_path /
+                                              f"{self.dataset}_val.csv")
+
         if stage in (None, 'test'):
-            self._test_dataset = self.read_csv(self.data_path / 
-                                                f"{self.dataset}_test.csv",
-                                                self.dataset)
-        
+            self._test_dataset = self.read_csv(self.data_path /
+                                               f"{self.dataset}_test.csv")
 
     def train_dataloader(self) -> DataLoader:
         """ Function that loads the train set. """
@@ -125,11 +121,33 @@ class DataModule(pl.LightningDataModule):
             collate_fn=self.collator,
             num_workers=self.num_workers,
         )
-    
-    @staticmethod
-    def read_csv(file_path: str, dataset,
-                 tgt_txt_col="TEXT", 
-                 tgt_lbl_col="LABEL") -> list:
+        
+    @classmethod
+    def read_dataset_name(cls, dataset):
+        dataset = dataset.strip().lower()
+
+    @classmethod
+    def read_hoc(cls, file_path: str) -> list:
+        """ Reads a comma separated value file.
+
+        :param path: path to a csv file.
+        
+        :return: 
+            - List of records as dictionaries
+            - Number of classes
+        """
+        df = pd.read_csv(file_path, sep='\t', index_col=0,)
+        df["labels"] = list(df.values)
+        df["text"] = df.index.values.astype(str)
+
+        return df[['text', 'labels']].to_dict("records")
+
+    @classmethod
+    def read_mtc(
+        cls, file_path: str,
+        tgt_txt_col="TEXT",
+        tgt_lbl_col="LABEL"
+    ) -> list:
         """ Reads a comma separated value file.
 
         :param path: path to a csv file.
@@ -140,14 +158,13 @@ class DataModule(pl.LightningDataModule):
         """
         df = pd.read_csv(file_path, sep='\t', index_col=0,)
         df["text"] = df[tgt_txt_col].astype(str)
-        df["labels"] = df[tgt_lbl_col] if dataset == 'hoc' \
-            else df[tgt_lbl_col] - 1        # source LABEL starts from 1 
-        
+        df["labels"] = df[tgt_lbl_col] - 1      # source LABEL starts from 1
+
         return df[['text', 'labels']].to_dict("records")
 
     @staticmethod
     def add_model_specific_args(parser):
-        
+
         parser.add_argument(
             "--data_path",
             default="./project/data",
@@ -167,21 +184,7 @@ class DataModule(pl.LightningDataModule):
             help="How many subprocesses to use for data loading. 0 means that \
                 the data will be loaded in the main process.",
         )
-        
-        parser.add_argument(
-            "--tgt_txt_col",
-            default="TEXT",
-            type=str,
-            help="Column name of the texts in the csv files.",
-        )
-        
-        parser.add_argument(
-            "--tgt_lbl_col",
-            default="LABEL",
-            type=str,
-            help="Column name of the labels in the csv files.",
-        )
-        
+
         return parser
 
 
@@ -192,7 +195,7 @@ if __name__ == "__main__":
     hparams = dotdict(
         encoder_model="bert-base-cased",
         data_path="./project/data",
-        dataset="mtc",
+        dataset="hoc",
         batch_size=2,
         num_workers=2,
         random_sampling=False,
@@ -205,10 +208,10 @@ if __name__ == "__main__":
 
     tokenizer = Tokenizer(hparams.encoder_model)
     collator = Collator(tokenizer)
-    datamodule = DataModule(
+    datamodule = MedDataModule(
         tokenizer, collator, hparams.data_path,
-        hparams.dataset, hparams.batch_size, hparams.num_workers,
-        hparams.tgt_txt_col, hparams.tgt_lbl_col,
+        hparams.dataset, hparams.batch_size, 
+        hparams.num_workers,
     )
     
     datamodule.setup()

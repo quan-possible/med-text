@@ -5,7 +5,7 @@ from pathlib import Path
 from collections import defaultdict, OrderedDict
 
 
-class HoC():
+class HOC():
     def __init__(self, source_dir, target_dir, new_labels: dict, replace_csv=True) -> None:
         
         self.source_dir = Path(source_dir) if type(
@@ -95,4 +95,4 @@ if __name__ == "__main__":
         "label-a": "Tumor promoting inflammation",
     }
     
-    hoc = HoC(SOURCE_DIR, TARGET_DIR, NEW_LABELS, REPLACE_CSV)
+    hoc = HOC(SOURCE_DIR, TARGET_DIR, NEW_LABELS, REPLACE_CSV)

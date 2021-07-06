@@ -9,14 +9,15 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+import torch.nn.functional as f
 from torch import optim
 from torch.utils.data import DataLoader, RandomSampler
 from transformers import AutoModel
 
 import pytorch_lightning as pl
-from torchmetrics.functional import f1, precision_recall
+from torchmetrics.functional import accuracy, f1, precision_recall
 from tokenizer import Tokenizer
-from datamodule import DataModule, Collator
+from datamodule import MedDataModule, Collator
 from torchnlp.encoders import LabelEncoder
 from torchnlp.utils import lengths_to_mask
 from pytorch_lightning.utilities.seed import seed_everything
@@ -47,11 +48,11 @@ class Classifier(pl.LightningModule):
         self.encoder_model = encoder_model
         self.encoder_learning_rate = encoder_learning_rate
         self.learning_rate = learning_rate
-        
+
         self.save_hyperparameters(
-            # "batch_size", 
-            # "nr_frozen_epochs", "encoder_learning_rate", 
-            # "learning rate", 
+            # "batch_size",
+            # "nr_frozen_epochs", "encoder_learning_rate",
+            # "learning rate",
             hparams,
         )
 
@@ -104,10 +105,12 @@ class Classifier(pl.LightningModule):
         # When using just one GPU this should not change behavior
         # but when splitting batches across GPU the tokens have padding
         # from the entire original batch
+
         mask = lengths_to_mask(lengths, device=tokens.device)
 
         # Run BERT model.
-        word_embeddings = self.bert(tokens, mask)[0]
+        
+        word_embeddings = self.bert(tokens, mask).last_hidden_state  # (batch_size, sequence_length, hidden_size)
 
         # Average Pooling
         word_embeddings = mask_fill(
@@ -119,13 +122,15 @@ class Classifier(pl.LightningModule):
         sentemb = sentemb / sum_mask
 
         # Classification head
-        logits = self.classification_head(sentemb)
+        logits = self.classification_head(sentemb)  # (batch_size, num_classes)
+
+        # print(logits)
 
         return {"logits": logits}
 
     def __build_loss(self):
         """ Initializes the loss function/s. """
-        self.loss_fn = nn.CrossEntropyLoss()
+        self.loss_fn = nn.BCEWithLogitsLoss()
 
     def unfreeze_encoder(self) -> None:
         """ un-freezes the encoder layer. """
@@ -176,7 +181,8 @@ class Classifier(pl.LightningModule):
         Returns:
             torch.tensor with loss value.
         """
-        return self.loss_fn(predictions["logits"], targets["labels"])
+        
+        return self.loss_fn(predictions["logits"], targets["labels"].float())
 
     def training_step(self, batch: tuple, batch_idx: int, *args, **kwargs) -> dict:
         """ 
@@ -192,15 +198,8 @@ class Classifier(pl.LightningModule):
         inputs, targets = batch
         model_out = self.forward(inputs)
         loss = self.loss(model_out, targets)
-        
-        # acc
-        y = targets["labels"]
-        logits = model_out["logits"]
-        preds = torch.argmax(logits, dim=1)
-        acc = torch.sum(y == preds).type_as(y) / (len(y) * 1.0)
-        
+
         self.log("loss", loss)
-        self.log("acc", acc, prog_bar=True)
 
         return loss
 
@@ -212,57 +211,60 @@ class Classifier(pl.LightningModule):
         """
         inputs, targets = batch
         model_out = self.forward(inputs)
-        loss = self.loss(model_out, targets)
+        val_loss = self.loss(model_out, targets)
 
-        y = targets["labels"]
-        logits = model_out["logits"]
-
-        preds = torch.argmax(logits, dim=1)
+        y = targets["labels"]   # (batch_size, num_labels)
+        
+        logits = model_out["logits"]    # (batch_size, num_labels)
+        
+        preds = f.sigmoid(logits)
 
         # acc
-        val_acc = torch.sum(y == preds).type_as(y) / (len(y) * 1.0)
+        val_acc = accuracy(preds, y)
 
         # f1
-        val_f1 = f1(preds, y, num_classes=self.num_classes, average='macro')
+        val_f1 = f1(preds, y)
 
         # precision and recall
-        val_precision, val_recall = precision_recall(
-            preds, y, num_classes=self.num_classes, average='macro')
+        val_precision, val_recall = precision_recall(preds, y)
 
-        loss_acc = OrderedDict({"val_loss": loss, "val_acc": val_acc})
+        loss_acc = OrderedDict({"val_loss": val_loss, "val_acc": val_acc})
         metrics = OrderedDict({"val_f1": val_f1, "val_precision": val_precision,
                               "val_recall": val_recall})
-        
+
         self.log_dict(loss_acc, prog_bar=True, sync_dist=True)
         self.log_dict(metrics, prog_bar=True, sync_dist=True)
         
         # # can also return just a scalar instead of a dict (return loss_val)
         return loss_acc
     
-    def test_step(self, batch: tuple, batch_idx: int, *args, **kwargs):
-        inputs, targets = batch
-        model_out = self.forward(inputs)
+    
+
+    # def test_step(self, batch: tuple, batch_idx: int, *args, **kwargs):
+    #     inputs, targets = batch
+    #     model_out = self.forward(inputs)
+
+    #     y = targets["labels"]
+    #     logits = model_out["logits"]
+
+    #     preds = torch.argmax(logits, dim=1)
         
-        y = targets["labels"]
-        logits = model_out["logits"]
-        
-        preds = torch.argmax(logits, dim=1)
-        
-        # acc
-        test_acc = torch.sum(y == preds).type_as(y) / (len(y) * 1.0)
-        
-        # f1
-        test_f1 = f1(preds, y, num_classes=self.num_classes, average='macro')
-        
-        # precision and recall
-        test_precision, test_recall = precision_recall(
-            preds, y, num_classes=self.num_classes, average='macro')
-        
-        metrics = OrderedDict({"val_acc": test_acc, "val_f1": test_f1, 
-                               "val_precision": test_precision,
-                               "val_recall": test_recall})
-        self.log_dict(metrics)
-        
+    #     preds
+
+    #     # acc
+    #     test_acc = torch.sum(y == preds).type_as(y) / (len(y) * 1.0)
+
+    #     # f1
+    #     test_f1 = f1(preds, y, num_classes=self.num_classes, average='macro')
+
+    #     # precision and recall
+    #     test_precision, test_recall = precision_recall(
+    #         preds, y, num_classes=self.num_classes, average='macro')
+
+    #     metrics = OrderedDict({"val_acc": test_acc, "val_f1": test_f1,
+    #                            "val_precision": test_precision,
+    #                            "val_recall": test_recall})
+    #     self.log_dict(metrics)
 
     def configure_optimizers(self):
         """ Sets different Learning rates for different parameter groups. """
@@ -347,6 +349,7 @@ class Classifier(pl.LightningModule):
     #         "val_acc": val_acc_mean,
     #     }
 
+
     #     return result
 if __name__ == "__main__":
     # ENCODER_MODEL = "bert-base-uncased"
@@ -363,7 +366,7 @@ if __name__ == "__main__":
     hparams = dotdict(
         encoder_model="bert-base-cased",
         data_path="./project/data",
-        dataset="mtc",
+        dataset="hoc",
         batch_size=2,
         num_workers=2,
         random_sampling=False,
@@ -376,10 +379,10 @@ if __name__ == "__main__":
 
     tokenizer = Tokenizer(hparams.encoder_model)
     collator = Collator(tokenizer)
-    datamodule = DataModule(
+    datamodule = MedDataModule(
         tokenizer, collator, hparams.data_path,
         hparams.dataset, hparams.batch_size, hparams.num_workers,
-        hparams.tgt_txt_col, hparams.tgt_lbl_col,
+        # hparams.tgt_txt_col, hparams.tgt_lbl_col,
     )
 
     num_classes = datamodule.num_classes
