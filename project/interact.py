@@ -10,7 +10,6 @@ import yaml
 from classifier import Classifier
 from tokenizer import Tokenizer
 from datamodule import MedDataModule, Collator
-from utils import dotdict
 
 from torchmetrics.functional import f1, precision_recall
 from collections import OrderedDict
@@ -19,7 +18,7 @@ def load_hparams(experiment_dir: str):
     hparams_file = experiment_dir + "/hparams.yaml"
     hparams = yaml.load(open(hparams_file).read(), Loader=yaml.FullLoader)
     
-    return dotdict(hparams)
+    return Namespace(hparams)
 
 
 def load_model(experiment_dir: str, hparams, tokenizer, collator, num_classes):

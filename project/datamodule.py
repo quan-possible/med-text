@@ -19,7 +19,6 @@ from transformers import AutoModel
 
 import pytorch_lightning as pl
 from tokenizer import Tokenizer
-from utils import dotdict
 from pytorch_lightning.utilities.seed import seed_everything
 from torchnlp.encoders import LabelEncoder
 from torchnlp.utils import collate_tensors, lengths_to_mask
@@ -192,7 +191,7 @@ if __name__ == "__main__":
     
     seed_everything(69)
     
-    hparams = dotdict(
+    hparams = Namespace(
         encoder_model="bert-base-cased",
         data_path="./project/data",
         dataset="hoc",

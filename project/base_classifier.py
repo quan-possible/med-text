@@ -2,26 +2,19 @@
 import logging as log
 from argparse import ArgumentParser, Namespace
 from collections import OrderedDict
-from typing import Tuple
 
-
-import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
 from torch import optim
-from torch.utils.data import DataLoader, RandomSampler
 from transformers import AutoModel
 from abc import abstractmethod
 
 import pytorch_lightning as pl
-from torchmetrics.functional import f1, precision_recall
 from tokenizer import Tokenizer
 from datamodule import MedDataModule, Collator
-from torchnlp.encoders import LabelEncoder
 from torchnlp.utils import lengths_to_mask
 from pytorch_lightning.utilities.seed import seed_everything
-from utils import mask_fill, dotdict
+from utils import mask_fill
 
     
 class BaseClassifier(pl.LightningModule):
@@ -409,18 +402,10 @@ class BaseClassifier(pl.LightningModule):
 
     #     return result
 if __name__ == "__main__":
-    # ENCODER_MODEL = "bert-base-uncased"
-    # DATA_PATH = "./project/data"
-    # DATASET = "hoc"
-    # BATCH_SIZE = 2
-    # NUM_WORKERS = 2
-    # NR_FROZEN_EPOCHS = 1
-    # ENCODER_LEARNING_RATE = 1e-05
-    # LEARNING_RATE = 3e-05
 
     seed_everything(69)
 
-    hparams = dotdict(
+    hparams = Namespace(
         encoder_model="bert-base-cased",
         data_path="./project/data",
         dataset="hoc",
@@ -444,7 +429,7 @@ if __name__ == "__main__":
 
     num_classes = datamodule.num_classes
 
-    model = HoCClassifier(
+    model = HOCClassifier(
         hparams, tokenizer, collator, hparams.encoder_model,
         hparams.batch_size, num_classes, hparams.nr_frozen_epochs,
         hparams.encoder_learning_rate, hparams.learning_rate,

@@ -4,13 +4,14 @@ Runs a model on a single node across N-gpus.
 import argparse
 import os
 from datetime import datetime
-from pytorch_lightning import callbacks
 
-from pytorch_lightning.core import datamodule
-
-from classifier import Classifier
+from base_classifier import BaseClassifier
+from hoc import HOCClassifier
+from mtc import MTCClassifier 
 from datamodule import MedDataModule, Collator
 from tokenizer import Tokenizer
+from utils import parse_dataset_name
+
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -33,18 +34,22 @@ def main(hparams) -> None:
     collator = Collator(tokenizer)
     datamodule = MedDataModule(
         tokenizer, collator, hparams.data_path,
-        hparams.dataset, hparams.batch_size, hparams.num_workers,
-        hparams.tgt_txt_col, hparams.tgt_lbl_col
+        hparams.dataset, hparams.batch_size, 
+        hparams.num_workers,
     )
-
-    num_classes = datamodule.num_classes
-
-    model = Classifier(
-        hparams, tokenizer, collator,
-        hparams.encoder_model, hparams.batch_size, num_classes,
-        hparams.nr_frozen_epochs, hparams.encoder_learning_rate,
-        hparams.learning_rate,
-    )
+    
+    if hparams.dataset == 'hoc':
+        model = HOCClassifier(
+            hparams, tokenizer, collator, hparams.encoder_model,
+            hparams.batch_size, hparams.nr_frozen_epochs,
+            hparams.encoder_learning_rate, hparams.learning_rate,
+        )
+    else:
+        model = MTCClassifier(
+            hparams, tokenizer, collator, hparams.encoder_model,
+            hparams.batch_size, hparams.nr_frozen_epochs,
+            hparams.encoder_learning_rate, hparams.learning_rate,
+        )
 
     # ------------------------
     # 2 INIT EARLY STOPPING
@@ -214,8 +219,10 @@ if __name__ == "__main__":
 
     # each LightningModule defines arguments relevant to it
     parser = MedDataModule.add_model_specific_args(parser)
-    parser = Classifier.add_model_specific_args(parser)
+    parser = BaseClassifier.add_model_specific_args(parser)
     hparams = parser.parse_args()
+    
+    hparams.dataset = parse_dataset_name(hparams.dataset)
 
     # ---------------------
     # RUN TRAINING

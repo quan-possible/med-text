@@ -1,26 +1,16 @@
 # -*- coding: utf-8 -*-
-import logging as log
-from argparse import ArgumentParser, Namespace
-from collections import OrderedDict
-from typing import Tuple
+from argparse import Namespace
 
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
-import torch.nn.functional as f
-from torch import optim
-from torch.utils.data import DataLoader, RandomSampler
-from transformers import AutoModel
+from argparse import Namespace
 
 import pytorch_lightning as pl
 from torchmetrics.functional import accuracy, f1, precision_recall
 from tokenizer import Tokenizer
 from datamodule import MedDataModule, Collator
-from torchnlp.encoders import LabelEncoder
-from torchnlp.utils import lengths_to_mask
 from pytorch_lightning.utilities.seed import seed_everything
-from utils import mask_fill, dotdict
 from base_classifier import BaseClassifier
 
 
@@ -68,16 +58,16 @@ class MTCClassifier(BaseClassifier):
                / (len(labels) * 1.0))
 
         # f1
-        f1_ = f1(preds, labels, num_classes=self.num_classes, average='macro')
+        f1_ = f1(preds, labels, num_classes=self.num_classes(), average='macro')
 
         # precision and recall
         precision_, recall_ = precision_recall(
-            preds, labels, num_classes=self.num_classes, average='macro')
+            preds, labels, num_classes=self.num_classes(), average='macro')
 
         return acc, f1_, precision_, recall_
 
     def loss(self, predictions: dict, targets: dict) -> torch.tensor:
-        return self._loss_fn(predictions["logits"], targets["labels"].float())
+        return self._loss_fn(predictions["logits"], targets["labels"])
 
     def predict(self, sample: dict) -> dict:
         if self.training:
@@ -98,12 +88,12 @@ if __name__ == "__main__":
 
     seed_everything(69)
 
-    hparams = dotdict(
+    hparams = Namespace(
         encoder_model="bert-base-cased",
         data_path="./project/data",
         dataset="mtc",
         batch_size=2,
-        num_workers=2,
+        num_workers=12,
         random_sampling=False,
         nr_frozen_epochs=1,
         encoder_learning_rate=1e-05,

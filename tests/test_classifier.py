@@ -1,3 +1,4 @@
+from argparse import Namespace
 import sys
 sys.path.insert(0, 'project')
 # TODO: Find a better way.
@@ -8,7 +9,6 @@ from pytorch_lightning import seed_everything
 from classifier import Classifier
 from datamodule import DataModule, Collator
 from tokenizer import Tokenizer
-from utils import dotdict
 
 
 class TestModel():
@@ -98,7 +98,7 @@ if __name__ == "__main__":
     
     seed_everything(69)
 
-    hparams = dotdict(
+    hparams = Namespace(
         encoder_model="bert-base-cased",
         data_path="./project/data",
         dataset="mtc",

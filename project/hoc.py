@@ -1,26 +1,16 @@
 # -*- coding: utf-8 -*-
-import logging as log
-from argparse import ArgumentParser, Namespace
-from collections import OrderedDict
-from typing import Tuple
+from argparse import Namespace
 
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
-import torch.nn.functional as f
-from torch import optim
-from torch.utils.data import DataLoader, RandomSampler
-from transformers import AutoModel
+from argparse import Namespace
 
 import pytorch_lightning as pl
 from torchmetrics.functional import accuracy, f1, precision_recall
 from tokenizer import Tokenizer
 from datamodule import MedDataModule, Collator
-from torchnlp.encoders import LabelEncoder
-from torchnlp.utils import lengths_to_mask
 from pytorch_lightning.utilities.seed import seed_everything
-from utils import mask_fill, dotdict
 from base_classifier import BaseClassifier
 
 class HOCClassifier(BaseClassifier):
@@ -94,7 +84,7 @@ if __name__ == "__main__":
 
     seed_everything(69)
 
-    hparams = dotdict(
+    hparams = Namespace(
         encoder_model="bert-base-cased",
         data_path="./project/data",
         dataset="hoc",
