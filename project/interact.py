@@ -7,9 +7,12 @@ import pandas as pd
 import torch
 import yaml
 
-from classifier import Classifier
+from base_classifier import BaseClassifier
+from hoc import HOCClassifier
+from mtc import MTCClassifier
 from tokenizer import Tokenizer
 from datamodule import MedDataModule, Collator
+from pytorch_lightning import Trainer
 
 from torchmetrics.functional import f1, precision_recall
 from collections import OrderedDict
@@ -17,11 +20,11 @@ from collections import OrderedDict
 def load_hparams(experiment_dir: str):
     hparams_file = experiment_dir + "/hparams.yaml"
     hparams = yaml.load(open(hparams_file).read(), Loader=yaml.FullLoader)
-    
-    return Namespace(hparams)
+    # print(Namespace(**hparams))
+    return Namespace(**hparams)
 
 
-def load_model(experiment_dir: str, hparams, tokenizer, collator, num_classes):
+def load_model(experiment_dir: str, dataset, hparams, tokenizer, collator, num_classes):
     """ Function that loads the model from an experiment folder.
     :param experiment_dir: Path to the experiment folder.
     Return:
@@ -39,9 +42,10 @@ def load_model(experiment_dir: str, hparams, tokenizer, collator, num_classes):
     ]
     checkpoint_path = experiment_path / checkpoints[-1]
     
-    model = Classifier.load_from_checkpoint(
+    classifier = HOCClassifier if dataset == "hoc" else MTCClassifier
+    
+    model = classifier.load_from_checkpoint(
         checkpoint_path, hparams=hparams, tokenizer=tokenizer,
-        num_classes=num_classes,
         collator=collator, encoder_model=hparams.encoder_model,
         batch_size=hparams.batch_size,
         nr_frozen_epochs=hparams.nr_frozen_epochs,
@@ -49,6 +53,7 @@ def load_model(experiment_dir: str, hparams, tokenizer, collator, num_classes):
         encoder_learning_rate=hparams.encoder_learning_rate, 
         learning_rate=hparams.learning_rate,
     )
+
     
     # Make sure model is in prediction mode
     model.eval()
@@ -64,67 +69,47 @@ def main(args):
     datamodule = MedDataModule(
         tokenizer, collator, hparams.data_path,
         hparams.dataset, hparams.batch_size, hparams.num_workers,
-        hparams.tgt_txt_col, hparams.tgt_lbl_col,
     )
     
     num_classes = datamodule.num_classes
 
-    model = load_model(args.experiment_dir, hparams, tokenizer,
+    model = load_model(args.experiment_dir, hparams.dataset, 
+                       hparams, tokenizer,
                        collator, num_classes)
     
     datamodule.setup()
+    test_dataloader = datamodule.test_dataloader()
     
-    # TODO: model interaction
     
-    # cuda = torch.device('cuda')     # Default CUDA device
+    model.cuda()
+    metrics = OrderedDict({"test_acc": 0,
+                        "test_f1": 0,
+                        "test_precision": 0,
+                        "test_recall": 0})
     
-    # test_dataloader = datamodule.test_dataloader()
-    # acc_ls = []
-    # f1_ls = []
-    # precision_ls = []
-    # recall_ls = []
-    
-    # model.cuda()
-    
-    # for batch in test_dataloader:
-    #     inputs, targets = batch
+    for batch in test_dataloader:
+        inputs, targets = batch
         
-    #     inputs = {key: value.cuda() for (key, value) in inputs.items()}
-    #     targets = {key: value.cuda() for key, value in targets.items()}
+        inputs = {key: value.cuda() for (key, value) in inputs.items()}
+        targets = {key: value.cuda() for key, value in targets.items()}
         
-    #     model_out = model.forward(inputs)
+        model_out = model.forward(inputs)
 
-    #     y = targets["labels"]
-    #     logits = model_out["logits"]
+        labels = targets["labels"]
+        logits = model_out["logits"]
 
-    #     preds = torch.argmax(logits, dim=1)
+        test_acc, test_f1, test_precision, test_recall = \
+            model._get_metrics(logits, labels)
+            
+        metrics["test_acc"] += test_acc
+        metrics["test_f1"] += test_f1
+        metrics["test_precision"] += test_precision
+        metrics["test_recall"] += test_recall
+        
+        
+    metrics = {key: value/len(test_dataloader) for (key, value) in metrics.items()}
 
-    #     # acc
-    #     test_acc = torch.sum(y == preds).type_as(y) / (len(y) * 1.0)
-    #     acc_ls.append(test_acc)
-
-    #     # f1
-    #     test_f1 = f1(preds, y, num_classes=num_classes, average='macro')
-    #     f1_ls.append(test_f1)
-
-    #     # precision and recall
-    #     test_precision, test_recall = precision_recall(
-    #         preds, y, num_classes=num_classes, average='macro')
-    #     precision_ls.append(test_precision)
-    #     recall_ls.append(test_recall)
-
-    #     # metrics = OrderedDict({"val_acc": test_acc, "val_f1": test_f1,
-    #     #                        "val_precision": test_precision,
-    #     #                        "val_recall": test_recall})
-    
-    # reduce_ = lambda x: sum(x)/len(x)
-    
-    # print(
-    #     reduce_(acc_ls),
-    #     reduce_(f1_ls),
-    #     reduce_(precision_ls),
-    #     reduce_(recall_ls),
-    # )   
+    print(metrics)   
 
 if __name__ == "__main__":
     parser = ArgumentParser(
