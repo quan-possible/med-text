@@ -211,7 +211,7 @@ class BaseClassifier(pl.LightningModule):
         # # can also return just a scalar instead of a dict (return loss_val)
         return loss_acc
 
-    def test_step(self, batch: tuple) -> dict:
+    def test_step(self, batch: tuple, batch_idx: int,) -> dict:
         """ Similar to the training step but with the model in eval mode.
 
         Returns:
@@ -233,7 +233,7 @@ class BaseClassifier(pl.LightningModule):
 
         self.log_dict(metrics, sync_dist=True)
 
-        # # can also return just a scalar instead of a dict (return loss_val)
+        # can also return just a scalar instead of a dict (return loss_val)
         return metrics
             
     @staticmethod
