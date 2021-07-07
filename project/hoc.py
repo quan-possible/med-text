@@ -51,16 +51,17 @@ class HOCClassifier(BaseClassifier):
         
     def _get_metrics(self, logits, labels):
         preds = torch.sigmoid(logits)
+        # print(preds)
 
         # acc
         acc = accuracy(preds, labels)
 
         # f1
-        f1_ = f1(preds, labels, average="macro")
+        f1_ = f1(preds, labels, num_classes=10, multilabel=True, average="macro")
 
         # precision and recall
-        precision_, recall_ = precision_recall(preds, labels, average="macro")
-
+        precision_, recall_ = precision_recall(preds, labels, num_classes=10, multilabel=True, average="macro")
+        
         return acc, f1_, precision_, recall_
         
     def loss(self, predictions: dict, targets: dict) -> torch.tensor:
