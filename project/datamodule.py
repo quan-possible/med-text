@@ -80,9 +80,6 @@ class MedDataModule(pl.LightningDataModule):
             self.read_csv = MedDataModule.read_mtc
             self.num_classes = 5
 
-    def prepare_data(self):
-        pass
-
     def setup(self, stage=None):
         if stage in (None, "fit"):
             self._train_dataset = self.read_csv(self.data_path /
@@ -172,7 +169,7 @@ class MedDataModule(pl.LightningDataModule):
         )
         parser.add_argument(
             "--dataset",
-            default="mtc",
+            default="hoc",
             type=str,
             help="Dataset chosen. 'hoc' (HoC) or 'mtc' (MTC-5).",
         )

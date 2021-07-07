@@ -56,10 +56,10 @@ class HOCClassifier(BaseClassifier):
         acc = accuracy(preds, labels)
 
         # f1
-        f1_ = f1(preds, labels)
+        f1_ = f1(preds, labels, average="macro")
 
         # precision and recall
-        precision_, recall_ = precision_recall(preds, labels)
+        precision_, recall_ = precision_recall(preds, labels, average="macro")
 
         return acc, f1_, precision_, recall_
         
@@ -105,8 +105,6 @@ if __name__ == "__main__":
         hparams.dataset, hparams.batch_size, 
         hparams.num_workers,
     )
-
-    num_classes = datamodule.num_classes
 
     model = HOCClassifier(
         hparams, tokenizer, collator, hparams.encoder_model,

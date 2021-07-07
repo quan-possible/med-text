@@ -6,14 +6,16 @@ sys.path.insert(0, 'project')
 import torch
 
 from pytorch_lightning import seed_everything
-from classifier import Classifier
-from datamodule import DataModule, Collator
+from base_classifier import BaseClassifier
+from datamodule import MedDataModule, Collator
 from tokenizer import Tokenizer
+from mtc import MTCClassifier
+from hoc import HOCClassifier
 
 
 class TestModel():
     
-    def __init__(self, model: Classifier):
+    def __init__(self, model: BaseClassifier):
         self.model = model
         self.optim = model.configure_optimizers()[0][0]
         
@@ -101,7 +103,7 @@ if __name__ == "__main__":
     hparams = Namespace(
         encoder_model="bert-base-cased",
         data_path="./project/data",
-        dataset="mtc",
+        dataset="hoc",
         batch_size=2,
         num_workers=2,
         random_sampling=False,
@@ -114,17 +116,15 @@ if __name__ == "__main__":
 
     tokenizer = Tokenizer(hparams.encoder_model)
     collator = Collator(tokenizer)
-    datamodule = DataModule(
+    datamodule = MedDataModule(
         tokenizer, collator, hparams.data_path,
-        hparams.dataset, hparams.batch_size, hparams.num_workers,
-        hparams.tgt_txt_col, hparams.tgt_lbl_col,
+        hparams.dataset, hparams.batch_size, 
+        hparams.num_workers,
     )
 
-    num_classes = datamodule.num_classes
-
-    model = Classifier(
+    model = HOCClassifier(
         hparams, tokenizer, collator, hparams.encoder_model,
-        hparams.batch_size, num_classes, hparams.nr_frozen_epochs,
+        hparams.batch_size, hparams.nr_frozen_epochs,
         hparams.encoder_learning_rate, hparams.learning_rate,
     )
     
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     # print(batch)
     
     test_obj = TestModel(model)
-    test_obj.test_shape(batch, hparams.batch_size, num_classes)
+    test_obj.test_shape(batch, hparams.batch_size, model.num_classes())
     test_obj.test_params_update(batch)
     
     print("Test successful!")

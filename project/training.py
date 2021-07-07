@@ -77,7 +77,7 @@ def main(hparams) -> None:
 
     # Model Checkpoint Callback
     ckpt_path = os.path.join(
-        hparams.log_dir, tb_logger.version, "checkpoints",
+        hparams.log_dir, exp_name, "checkpoints",
     )
 
     # --------------------------------
@@ -165,7 +165,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--min_epochs",
-        default=1,
+        default=15,
         type=int,
         help="Limits training to a minimum number of epochs",
     )
