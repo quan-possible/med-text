@@ -66,18 +66,18 @@ def main(hparams) -> None:
     # 3 INIT LOGGERS
     # ------------------------
     # Tensorboard Callback
-    exp_version = datetime.now().strftime("%d-%m-%Y--%H-%M-%S")
-    exp_name = exp_version + f"--{hparams.encoder_model}--{hparams.dataset}"
+    exp_version = datetime.now().strftime("%d-%m-%Y--%H-%M-%S") \
+        + f"--{hparams.encoder_model}--{hparams.dataset}"
     
     tb_logger = TensorBoardLogger(
         save_dir=hparams.log_dir,
         version=exp_version,
-        name=exp_name,
+        name="",
     )
 
     # Model Checkpoint Callback
     ckpt_path = os.path.join(
-        hparams.log_dir, exp_name, "checkpoints",
+        hparams.log_dir, tb_logger.version, "checkpoints",
     )
 
     # --------------------------------
