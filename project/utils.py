@@ -2,6 +2,7 @@
 from datetime import datetime
 
 import torch
+import torch.nn as nn
 
 class F1WithLogitsLoss(nn.Module):
     '''Calculate F1 score. Can work with gpu tensors
@@ -25,20 +26,20 @@ class F1WithLogitsLoss(nn.Module):
         self.epsilon = epsilon
         
     def forward(self, logits, labels):
-        # assert y_pred.ndim == 2
-        # assert y_true.ndim == 1
+        # assert y_hat.ndim == 2
+        # assert y.ndim == 1
         # logits (batch_size, num_labels)
         # labels (batch_size, num_labels)
         y_hat = torch.sigmoid(logits).float()
         y = labels.float()
 
-        # y_true = F.one_hot(y_true, 2).to(torch.float32)
-        # y_pred = F.softmax(y_pred, dim=1)
+        # y = F.one_hot(y, 2).to(torch.float32)
+        # y_hat = F.softmax(y_hat, dim=1)
         
-        tp = (y_true * y_pred).sum(dim=0)
-        tn = ((1 - y_true) * (1 - y_pred)).sum(dim=0)
-        fp = ((1 - y_true) * y_pred).sum(dim=0)
-        fn = (y_true * (1 - y_pred)).sum(dim=0)
+        tp = (y * y_hat).sum(dim=0)
+        tn = ((1 - y) * (1 - y_hat)).sum(dim=0)
+        fp = ((1 - y) * y_hat).sum(dim=0)
+        fn = (y * (1 - y_hat)).sum(dim=0)
 
         # precision = tp / (tp + fp + self.epsilon)
         # recall = tp / (tp + fn + self.epsilon)

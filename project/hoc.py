@@ -59,13 +59,13 @@ class HOCClassifier(BaseClassifier):
         # print(preds)
 
         # acc
-        acc = accuracy(preds, labels)
+        acc = accuracy(shrinked_logits, labels)
 
         # f1
-        f1_ = f1(preds, labels, num_classes=10, average="micro")
+        f1_ = f1(shrinked_logits, labels, num_classes=10, average="micro")
 
         # precision and recall
-        precision_, recall_ = precision_recall(preds, labels, num_classes=10, average="micro")
+        precision_, recall_ = precision_recall(shrinked_logits, labels, num_classes=10, average="micro")
         
         return acc, f1_, precision_, recall_
         
