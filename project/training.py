@@ -67,13 +67,11 @@ def main(hparams) -> None:
     # ------------------------
     # Tensorboard Callback
     
-    exp_version = datetime.now().strftime("%d-%m-%Y--%H-%M-%S") \
-        + f"--{hparams.encoder_model.replace('/','-')}"\
-        + f"--{hparams.dataset}"
-    
     tb_logger = TensorBoardLogger(
         save_dir=hparams.log_dir,
-        version=exp_version,
+        version=datetime.now().strftime("%d-%m-%Y--%H-%M-%S") \
+        + f"--{hparams.encoder_model.replace('/','-')}"\
+        + f"--{hparams.dataset}",
         name="",
     )
 

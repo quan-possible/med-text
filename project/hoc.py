@@ -12,6 +12,7 @@ from tokenizer import Tokenizer
 from datamodule import MedDataModule, Collator
 from pytorch_lightning.utilities.seed import seed_everything
 from base_classifier import BaseClassifier
+from utils import F1WithLogitsLoss
 
 class HOCClassifier(BaseClassifier):
 
@@ -46,11 +47,15 @@ class HOCClassifier(BaseClassifier):
     def classification_head(self):
         return self._classification_head
 
+    # def _f1_loss(output, target):
+
+
     def _build_loss(self):
-        self._loss_fn = nn.BCEWithLogitsLoss()
+        # self._loss_fn = nn.BCEWithLogitsLoss()
+        self._loss_fn = F1WithLogitsLoss()
         
     def _get_metrics(self, logits, labels):
-        preds = torch.sigmoid(logits)
+        shrinked_logits = torch.sigmoid(logits)
         # print(preds)
 
         # acc
