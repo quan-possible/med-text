@@ -51,8 +51,10 @@ class HOCClassifier(BaseClassifier):
 
 
     def _build_loss(self):
-        # self._loss_fn = nn.BCEWithLogitsLoss()
-        self._loss_fn = F1WithLogitsLoss()
+        self._loss_fn = nn.BCEWithLogitsLoss(
+            pos_weight=torch.tensor([5, 15, 15, 15, 7, 5, 12, 4, 3, 7])
+        )
+        # self._loss_fn = F1WithLogitsLoss()
         
     def _get_metrics(self, logits, labels):
         shrinked_logits = torch.sigmoid(logits)
@@ -62,10 +64,10 @@ class HOCClassifier(BaseClassifier):
         acc = accuracy(shrinked_logits, labels)
 
         # f1
-        f1_ = f1(shrinked_logits, labels, num_classes=10, average="micro")
+        f1_ = f1(shrinked_logits, labels, num_classes=10, average=self.hparams.metric_averaging)
 
         # precision and recall
-        precision_, recall_ = precision_recall(shrinked_logits, labels, num_classes=10, average="micro")
+        precision_, recall_ = precision_recall(shrinked_logits, labels, num_classes=10, average=self.hparams.metric_averaging)
         
         return acc, f1_, precision_, recall_
         

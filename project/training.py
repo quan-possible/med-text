@@ -106,6 +106,7 @@ def main(hparams) -> None:
         deterministic=True,
         check_val_every_n_epoch=1,
         fast_dev_run=False,
+        auto_lr_find=True,
         accumulate_grad_batches=hparams.accumulate_grad_batches,
         max_epochs=hparams.max_epochs,
         min_epochs=hparams.min_epochs,
@@ -117,7 +118,7 @@ def main(hparams) -> None:
     # ------------------------
     trainer.fit(model, datamodule)
     
-    trainer.test()
+    # trainer.test()
 
 
 if __name__ == "__main__":

@@ -207,6 +207,10 @@ class BaseClassifier(pl.LightningModule):
 
         self.log_dict(loss_acc, prog_bar=True, sync_dist=True)
         self.log_dict(metrics, prog_bar=True, sync_dist=True)
+        self.log("hp_metric", val_f1)
+
+        print(self.learning_rate)
+        print(self.encoder_learning_rate)
 
         # # can also return just a scalar instead of a dict (return loss_val)
         return loss_acc
@@ -263,6 +267,13 @@ class BaseClassifier(pl.LightningModule):
             default=1,
             type=int,
             help="Number of epochs we want to keep the encoder model frozen.",
+        )
+
+        parser.add_argument(
+            "--metric_averaging",
+            default="micro",
+            type=str,
+            help="Averaging methods for validation metrics (micro, macro,...)",
         )
 
         return parser
