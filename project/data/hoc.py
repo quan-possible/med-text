@@ -6,14 +6,14 @@ from collections import defaultdict, OrderedDict
 
 
 class HOC():
-    def __init__(self, source_dir, target_dir, new_labels: dict, replace_csv=True) -> None:
+    def __init__(self, source_dir, target_dir, replace_csv=True) -> None:
         
         self.source_dir = Path(source_dir) if type(
             source_dir) is str else source_dir
         self.target_dir = Path(target_dir) if type(
             target_dir) is str else target_dir
         self.labels = self.get_labels(source_dir)
-        self.new_labels = [new_labels[label] for label in self.labels]
+        # self.new_labels = [new_labels[label] for label in self.labels]
         self.replace_csv = replace_csv
         
         
@@ -22,11 +22,11 @@ class HOC():
         self.test_dict = self.read_dataset(source_dir, self.labels, 'test')
             
         self.save_csv(self.train_dict, self.target_dir, 
-                      self.new_labels, self.replace_csv, set_='train')
+                      self.labels, self.replace_csv, set_='train')
         self.save_csv(self.val_dict, self.target_dir, 
-                      self.new_labels, self.replace_csv, set_='val')
+                      self.labels, self.replace_csv, set_='val')
         self.save_csv(self.test_dict, self.target_dir,
-                      self.new_labels, self.replace_csv, set_='test')
+                      self.labels, self.replace_csv, set_='test')
     
     def save_csv(self, data_dict, target_dir, labels, 
                  replace_csv, set_):
@@ -95,4 +95,4 @@ if __name__ == "__main__":
         "label-a": "Tumor promoting inflammation",
     }
     
-    hoc = HOC(SOURCE_DIR, TARGET_DIR, NEW_LABELS, REPLACE_CSV)
+    hoc = HOC(SOURCE_DIR, TARGET_DIR, REPLACE_CSV)

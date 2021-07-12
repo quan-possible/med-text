@@ -122,8 +122,8 @@ class BaseClassifier(pl.LightningModule):
         # from the entire original batch
         mask = lengths_to_mask(lengths, device=tokens.device)
 
-        # Run BERT model.
-        word_embeddings = self.encoder()(tokens, mask)[0]
+        # Run BERT model. output is (batch_size, sequence_length, hidden_size)
+        word_embeddings = self.encoder()(tokens, mask).last_hidden_state
 
         # Average Pooling
         word_embeddings = mask_fill(
