@@ -57,14 +57,14 @@ class Tokenizer(TextEncoder):
         return self.tokenizer.vocab_size
         
 
-    def encode(self, sequence: str) -> torch.Tensor:
-        """ Encodes a 'sequence'.
-        :param sequence: String 'sequence' to encode.
+    # def encode(self, sequence: str) -> torch.Tensor:
+    #     """ Encodes a 'sequence'.
+    #     :param sequence: String 'sequence' to encode.
         
-        :return: torch.Tensor with Encoding of the `sequence`.
-        """
-        sequence = TextEncoder.encode(self, sequence)
-        return self.tokenizer(sequence, return_tensors="pt")["input_ids"][0]
+    #     :return: torch.Tensor with Encoding of the `sequence`.
+    #     """
+    #     sequence = TextEncoder.encode(self, sequence)
+    #     return self.tokenizer(sequence, return_tensors="pt")["input_ids"][0]
 
     def batch_encode(self, sentences: list):
         """
@@ -78,7 +78,6 @@ class Tokenizer(TextEncoder):
         tokenizer_output = self.tokenizer(
             sentences,
             return_tensors="pt",
-            padding=True,
             return_length=True,
             return_token_type_ids=False,
             return_attention_mask=False,

@@ -6,6 +6,7 @@ from math import floor
 from random import random
 from typing import Tuple
 from pathlib import Path
+import json
 
 import numpy as np
 import pandas as pd
@@ -72,13 +73,23 @@ class MedDataModule(pl.LightningDataModule):
 
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.labels = None
+        self._labels_desc = None
 
         if self.dataset == 'hoc':
             self.read_csv = MedDataModule.read_hoc
             self.num_classes = 10
+            self.labels = pd.read_csv(self.data_path / 'hoc_train.csv', \
+                sep='\t', index_col=0, nrows=0).columns.tolist()
+            self._labels_desc = self.read_labels_desc(self.data_path, 
+                                                    self.labels)
         else:
             self.read_csv = MedDataModule.read_mtc
             self.num_classes = 5
+
+    @property
+    def labels_desc(self):
+        return self._labels_desc
 
     def setup(self, stage=None):
         if stage in (None, "fit"):
@@ -117,6 +128,13 @@ class MedDataModule(pl.LightningDataModule):
             collate_fn=self.collator,
             num_workers=self.num_workers,
         )
+        
+    def read_labels_desc(self, datapath, labels):
+        with open(datapath / "labels.json", 'r') as f:
+            desc_dict = json.load(f)
+
+        desc = [desc_dict[label] for label in labels]
+        return desc
         
     @classmethod
     def read_dataset_name(cls, dataset):
@@ -210,9 +228,11 @@ if __name__ == "__main__":
         hparams.num_workers,
     )
     
-    datamodule.setup()
+    print(datamodule.labels_desc)
     
-    print(next(iter(datamodule.train_dataloader())))
+    # datamodule.setup()
+    
+    # print(next(iter(datamodule.train_dataloader())))
     
     ### TODO: Write unit test
     
