@@ -78,6 +78,7 @@ class Tokenizer(TextEncoder):
         tokenizer_output = self.tokenizer(
             sentences,
             return_tensors="pt",
+            padding=True,
             return_length=True,
             return_token_type_ids=False,
             return_attention_mask=False,
