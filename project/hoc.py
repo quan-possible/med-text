@@ -98,7 +98,7 @@ class HOCClassifier(BaseClassifier):
             """
 
         k = self._process_tokens(tokens_dict).permute(1, 0, 2)
-        q = self.desc_emb.type_as(k).expand(k.size(1),
+        q = torch.clone(self.desc_emb).type_as(k).expand(k.size(1),
             self.desc_emb.size(0), self.desc_emb.size(1)).permute(1, 0, 2)
 
         attn_output, _ = self.label_attn(q, k, k)

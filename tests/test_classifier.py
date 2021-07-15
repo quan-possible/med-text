@@ -110,6 +110,7 @@ if __name__ == "__main__":
         nr_frozen_epochs=1,
         encoder_learning_rate=1e-05,
         learning_rate=3e-05,
+        num_heads=8,
         tgt_txt_col="TEXT",
         tgt_lbl_col="LABEL",
     )
@@ -118,14 +119,20 @@ if __name__ == "__main__":
     collator = Collator(tokenizer)
     datamodule = MedDataModule(
         tokenizer, collator, hparams.data_path,
-        hparams.dataset, hparams.batch_size, 
+        hparams.dataset, hparams.batch_size,
         hparams.num_workers,
     )
 
+    desc_tokens = datamodule.desc_tokens
+    # print(desc_tokens)
+    print("Load description finished!")
+
     model = HOCClassifier(
-        hparams, tokenizer, collator, hparams.encoder_model,
+        hparams, desc_tokens, tokenizer, collator,
+        hparams.encoder_model,
         hparams.batch_size, hparams.nr_frozen_epochs,
         hparams.encoder_learning_rate, hparams.learning_rate,
+        hparams.num_heads,
     )
     
     datamodule.setup()
@@ -133,7 +140,7 @@ if __name__ == "__main__":
     # print(batch)
     
     test_obj = TestModel(model)
-    test_obj.test_shape(batch, hparams.batch_size, model.num_classes())
+    test_obj.test_shape(batch, hparams.batch_size, model.num_classes)
     test_obj.test_params_update(batch)
     
     print("Test successful!")

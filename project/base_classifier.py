@@ -3,6 +3,9 @@ import logging as log
 from argparse import ArgumentParser, Namespace
 from collections import OrderedDict
 
+from tokenizer import Tokenizer
+from datamodule import MedDataModule, Collator
+
 import torch
 import torch.nn as nn
 from torch import optim
@@ -10,8 +13,6 @@ from transformers import AutoModel
 from abc import abstractmethod
 
 import pytorch_lightning as pl
-from tokenizer import Tokenizer
-from datamodule import MedDataModule, Collator
 from torchnlp.utils import lengths_to_mask
 from pytorch_lightning.utilities.seed import seed_everything
 from utils import mask_fill
