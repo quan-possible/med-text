@@ -32,7 +32,7 @@ class AdditiveAttention(nn.Module):
         self.bias = nn.Parameter(torch.rand(hidden_dim).uniform_(-0.1, 0.1))
         self.score_proj = nn.Linear(hidden_dim, 1)
 
-    def forward(self, query: Tensor, key: Tensor, value: Tensor) -> Tuple[Tensor, Tensor]:
+    def forward(self, query: Tensor, key: Tensor, value: Tensor):
         score = self.score_proj(torch.tanh(self.key_proj(key) + self.query_proj(query) + self.bias)).squeeze(-1)
         attn = F.softmax(score, dim=-1)
         context = torch.bmm(attn.unsqueeze(1), value)
@@ -104,7 +104,8 @@ def mask_fill(
     :param padding_index: Index of the padding token.
     """
     padding_mask = tokens.eq(padding_index).unsqueeze(-1)
-    return embeddings.float().masked_fill_(padding_mask, fill_value).type_as(embeddings)
+    return embeddings.float().masked_fill_(\
+        padding_mask, fill_value).type_as(embeddings)
 
 def parse_dataset_name(dataset: str):
     dataset = dataset.strip().lower()

@@ -16,12 +16,11 @@ from utils import F1WithLogitsLoss
 
 class HOCClassifier(BaseClassifier):
 
-    def __init__(self, hparams, tokenizer, collator, encoder_model,
-                 batch_size, nr_frozen_epochs, encoder_learning_rate, learning_rate,):
-        super().__init__(hparams, tokenizer, collator, encoder_model,
+    def __init__(self, hparams, desc_tokens, tokenizer, collator, encoder_model,
+                 batch_size, nr_frozen_epochs, encoder_learning_rate, learning_rate, num_heads):
+        super().__init__(hparams, desc_tokens, tokenizer, collator, encoder_model,
                          batch_size, nr_frozen_epochs,
-                         #  label_encoder,
-                         encoder_learning_rate, learning_rate)
+                         encoder_learning_rate, learning_rate, num_heads)
         
         self._num_classes = 10 
         
@@ -30,24 +29,34 @@ class HOCClassifier(BaseClassifier):
         
         # Loss criterion initialization.
         self._build_loss()
+        
 
         if nr_frozen_epochs > 0:
             self.freeze_encoder()
         else:
             self._frozen = False
-
+            
+        # (batch_size, seq_len, hid_dim)
+        # CLS pooling.
+        self._desc_emb = self._process_tokens(desc_tokens)[:, 0, :].squeeze()
+        
         self.nr_frozen_epochs = nr_frozen_epochs
     
+    @property
     def num_classes(self):
         return self._num_classes
     
+    @property
+    def desc_emb(self):
+        return self._desc_emb
+    
+    @property
     def encoder(self):
         return self._encoder
 
+    @property
     def classification_head(self):
         return self._classification_head
-
-    # def _f1_loss(output, target):
 
 
     def _build_loss(self):
@@ -57,22 +66,47 @@ class HOCClassifier(BaseClassifier):
         # self._loss_fn = F1WithLogitsLoss()
         
     def _get_metrics(self, logits, labels):
-        shrinked_logits = torch.sigmoid(logits)
+        normed_logits = torch.sigmoid(logits)
         # print(preds)
 
         # acc
-        acc = accuracy(shrinked_logits, labels)
+        acc = accuracy(normed_logits, labels)
 
         # f1
-        f1_ = f1(shrinked_logits, labels, num_classes=10, average=self.hparams.metric_averaging)
+        f1_ = f1(
+            normed_logits, labels, num_classes=self.num_classes, 
+            average=self.hparams.metric_averaging)
 
         # precision and recall
-        precision_, recall_ = precision_recall(shrinked_logits, labels, num_classes=10, average=self.hparams.metric_averaging)
+        precision_, recall_ = precision_recall(
+            normed_logits, labels, num_classes=self.num_classes,
+            average=self.hparams.metric_averaging)
         
         return acc, f1_, precision_, recall_
         
     def loss(self, predictions: dict, targets: dict) -> torch.tensor:
         return self._loss_fn(predictions["logits"], targets["labels"].float())
+
+    def forward(self, tokens_dict):
+        """ Usual pytorch forward function.
+            :param tokens_dict: tuple of:
+                - text sequences [batch_size x src_seq_len]
+                - lengths: source lengths [batch_size]
+
+            Returns:
+                Dictionary with model outputs (e.g: logits)
+            """
+
+        k = self._process_tokens(tokens_dict).permute(1, 0, 2)
+        q = self.desc_emb.type_as(k).expand(k.size(1),
+            self.desc_emb.size(0), self.desc_emb.size(1)).permute(1, 0, 2)
+
+        attn_output, _ = self.label_attn(q, k, k)
+        # (batch_size, num_classes)
+        logits = self.classification_head(
+            attn_output).squeeze().permute(1, 0)
+
+        return {"logits": logits}
     
     def predict(self, sample: dict) -> dict:
         if self.training:
@@ -102,6 +136,7 @@ if __name__ == "__main__":
         nr_frozen_epochs=1,
         encoder_learning_rate=1e-05,
         learning_rate=3e-05,
+        num_heads=8,
         tgt_txt_col="TEXT",
         tgt_lbl_col="LABEL",
     )
@@ -113,11 +148,17 @@ if __name__ == "__main__":
         hparams.dataset, hparams.batch_size, 
         hparams.num_workers,
     )
+    
+    desc_tokens = datamodule.desc_tokens
+    # print(desc_tokens)
+    print("Load description finished!")
 
     model = HOCClassifier(
-        hparams, tokenizer, collator, hparams.encoder_model,
+        hparams, desc_tokens, tokenizer, collator, 
+        hparams.encoder_model,
         hparams.batch_size, hparams.nr_frozen_epochs,
         hparams.encoder_learning_rate, hparams.learning_rate,
+        hparams.num_heads,
     )
 
     trainer = pl.Trainer()

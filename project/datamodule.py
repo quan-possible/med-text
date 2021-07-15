@@ -28,7 +28,7 @@ from torchnlp.utils import collate_tensors, lengths_to_mask
 
 class Collator(object):
     
-    def __init__(self, tokenizer, prepare_targets: bool = True) -> None:
+    def __init__(self, tokenizer) -> None:
         """
         Object that prepares a sample to input the model when called.
         :param tokenizer: Tokenizer class instance.
@@ -36,9 +36,9 @@ class Collator(object):
 
         super().__init__()
         self.tokenizer = tokenizer
-        self.prepare_targets = prepare_targets
+        # self.prepare_targets = prepare_targets
 
-    def __call__(self, sample):
+    def __call__(self, sample, prepare_targets: bool = True):
         """
         :param sample: list of dictionaries.
         
@@ -51,7 +51,7 @@ class Collator(object):
 
         inputs = {"tokens": tokens, "lengths": lengths}
 
-        if not self.prepare_targets:
+        if not prepare_targets:
             return inputs, {}
 
         targets = {"labels": torch.tensor(sample["labels"])}
@@ -74,22 +74,25 @@ class MedDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.labels = None
-        self._labels_desc = None
+        self._labels_desc_proc = None
 
         if self.dataset == 'hoc':
             self.read_csv = MedDataModule.read_hoc
             self.num_classes = 10
             self.labels = pd.read_csv(self.data_path / 'hoc_train.csv', \
                 sep='\t', index_col=0, nrows=0).columns.tolist()
-            self._labels_desc = self.read_labels_desc(self.data_path, 
-                                                    self.labels)
+            self._desc_tokens = self.read_desc(self.data_path, 
+                                              self.labels)
         else:
             self.read_csv = MedDataModule.read_mtc
             self.num_classes = 5
 
     @property
-    def labels_desc(self):
-        return self._labels_desc
+    def desc_tokens(self):
+        if self.dataset != 'hoc':
+            print("Nothing available!")
+            return None
+        return self._desc_tokens
 
     def setup(self, stage=None):
         if stage in (None, "fit"):
@@ -129,12 +132,13 @@ class MedDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
         )
         
-    def read_labels_desc(self, datapath, labels):
-        with open(datapath / "labels.json", 'r') as f:
+    def read_desc(self, data_path, labels):
+        with open(data_path / "labels.json", 'r') as f:
             desc_dict = json.load(f)
 
-        desc = [desc_dict[label] for label in labels]
-        return desc
+        desc = {"text": [desc_dict[label] for label in labels]}
+        desc_tokens, _ = self.collator(desc, prepare_targets=False)
+        return desc_tokens
         
     @classmethod
     def read_dataset_name(cls, dataset):

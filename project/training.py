@@ -13,6 +13,7 @@ from tokenizer import Tokenizer
 from utils import parse_dataset_name
 
 from pytorch_lightning import Trainer
+from pytorch_lightning.plugins import DDPPlugin
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.utilities.seed import seed_everything
@@ -38,11 +39,16 @@ def main(hparams) -> None:
         hparams.num_workers,
     )
     
+    desc_tokens = datamodule.desc_tokens
+    print("Finished loading data!")
+    
+    
     if hparams.dataset == 'hoc':
         model = HOCClassifier(
-            hparams, tokenizer, collator, hparams.encoder_model,
+            hparams, desc_tokens, tokenizer, collator, hparams.encoder_model,
             hparams.batch_size, hparams.nr_frozen_epochs,
             hparams.encoder_learning_rate, hparams.learning_rate,
+            hparams.num_heads,
         )
     else:
         model = MTCClassifier(
@@ -112,6 +118,7 @@ def main(hparams) -> None:
         min_epochs=hparams.min_epochs,
         val_check_interval=hparams.val_check_interval,
         accelerator="ddp",
+        plugins=DDPPlugin(find_unused_parameters=False),
     )
     # ------------------------
     # 6 START TRAINING
@@ -220,7 +227,10 @@ if __name__ == "__main__":
             "Logging of experiments and hparams directory."
         ),
     )
-
+    
+    import os
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    
     # each LightningModule defines arguments relevant to it
     parser = MedDataModule.add_model_specific_args(parser)
     parser = BaseClassifier.add_model_specific_args(parser)
