@@ -6,8 +6,28 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import Tensor
 
+
+class DotProductAttention(nn.Module):
+    """
+    Compute the dot products of the query with all values and apply a softmax function to obtain the weights on the values
+    """
+
+    def __init__(self, hidden_dim):
+        super(DotProductAttention, self).__init__()
+        self.normalize = nn.LayerNorm(hidden_dim)
+        self.out_projection = nn.Linear(hidden_dim * 2, hidden_dim)
+
+    def forward(self, query: Tensor, value: Tensor):
+        batch_size, hidden_dim, input_size = query.size(0), query.size(2), value.size(1)
+
+        score = torch.bmm(query, value.transpose(1, 2))
+        attn = F.softmax(score.view(-1, input_size), dim=1).view(batch_size, -1, input_size)
+        context = torch.bmm(attn, value)
+
+        return context, attn
 
 class AdditiveAttention(nn.Module):
     """

@@ -103,17 +103,19 @@ class BaseClassifier(pl.LightningModule):
     def _build_model(self, encoder_model) -> None:
         pass
 
-    def _process_tokens(self, tokens_dict):
-
+    def _process_tokens(self, tokens_dict, type_as_tensor=None):
         tokens, lengths = tokens_dict['tokens'], \
             tokens_dict['lengths']
         tokens = tokens[:, : lengths.max()]
 
+        if type_as_tensor != None:
+            tokens = tokens.to(type_as_tensor.device)
+            
         # When using just one GPU this should not change behavior
         # but when splitting batches across GPU the tokens have padding
-        # from the entire original batch. In other words, use when DP=True.
+        # from the entire original batch. In other words, use this when using DataParallel.
         mask = lengths_to_mask(lengths, device=tokens.device)
-
+        
         # Run BERT model.
         # output is (batch_size, sequence_length, hidden_size)
         emb = self.encoder(tokens, mask).last_hidden_state

@@ -1,16 +1,17 @@
-from argparse import Namespace
+
 import sys
 sys.path.insert(0, 'project')
-# TODO: Find a better way.
 
-import torch
-
-from pytorch_lightning import seed_everything
 from base_classifier import BaseClassifier
 from datamodule import MedDataModule, Collator
 from tokenizer import Tokenizer
 from mtc import MTCClassifier
 from hoc import HOCClassifier
+
+import torch
+from argparse import Namespace
+from pytorch_lightning import seed_everything
+
 
 
 class TestModel():
@@ -25,7 +26,8 @@ class TestModel():
         self.model.eval()
         res = self.model(inputs)['logits']
 
-        err_msg = "Incorrect output shape!"
+        err_msg = f"Incorrect output shape!. Expect {(batch_size, n_classes)},\
+            but got {res.size()} instead!"
         assert res.size() == torch.Size(
             [batch_size, n_classes]), err_msg
         

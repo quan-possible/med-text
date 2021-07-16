@@ -2,7 +2,7 @@
 from tokenizer import Tokenizer
 from datamodule import MedDataModule, Collator
 from base_classifier import BaseClassifier
-from utils import F1WithLogitsLoss
+from utils import F1WithLogitsLoss, AdditiveAttention, DotProductAttention
 
 
 from argparse import Namespace
@@ -32,19 +32,13 @@ class HOCClassifier(BaseClassifier):
         # Loss criterion initialization.
         self._build_loss()
         
+        self.desc_tokens = desc_tokens  # (batch_size, seq_len)
 
         if nr_frozen_epochs > 0:
             self.freeze_encoder()
         else:
             self._frozen = False
             
-        # (batch_size, seq_len, hid_dim)
-        # CLS pooling.
-        _desc_emb = self._process_tokens(desc_tokens)\
-            [:, 0, :].squeeze()
-            
-        self.register_buffer("desc_emb", _desc_emb)
-        
         self.nr_frozen_epochs = nr_frozen_epochs
     
     @property
@@ -63,6 +57,31 @@ class HOCClassifier(BaseClassifier):
     def classification_head(self):
         return self._classification_head
     
+    def _build_loss(self):
+        self._loss_fn = nn.BCEWithLogitsLoss(
+            pos_weight=torch.tensor([5, 15, 15, 15, 7, 5, 12, 4, 3, 7])
+        )
+        # self._loss_fn = F1WithLogitsLoss()
+
+    def _get_metrics(self, logits, labels):
+        normed_logits = torch.sigmoid(logits)
+        # print(preds)
+
+        # acc
+        acc = accuracy(normed_logits, labels)
+
+        # f1
+        f1_ = f1(
+            normed_logits, labels, num_classes=self.num_classes,
+            average=self.hparams.metric_averaging)
+
+        # precision and recall
+        precision_, recall_ = precision_recall(
+            normed_logits, labels, num_classes=self.num_classes,
+            average=self.hparams.metric_averaging)
+
+        return acc, f1_, precision_, recall_
+    
     
     def _build_model(self, encoder_model) -> None:
         """ Init BERT model + tokenizer + classification head."""
@@ -78,10 +97,12 @@ class HOCClassifier(BaseClassifier):
         else:
             self.encoder_features = 768
 
-        self.label_attn = nn.MultiheadAttention(
-            self.encoder_features, self.num_heads, dropout=0.2,
-        )
+        # self.label_attn = nn.MultiheadAttention(
+        #     self.encoder_features, self.num_heads, dropout=0.2,
+        # )
 
+        self.label_attn = DotProductAttention(self.encoder_features)
+        
         # Classification head
         self._classification_head = nn.Sequential(
             nn.Linear(self.encoder_features, self.encoder_features * 2),
@@ -90,32 +111,6 @@ class HOCClassifier(BaseClassifier):
             nn.Tanh(),
             nn.Linear(self.encoder_features, 1),
         )
-
-
-    def _build_loss(self):
-        self._loss_fn = nn.BCEWithLogitsLoss(
-            pos_weight=torch.tensor([5, 15, 15, 15, 7, 5, 12, 4, 3, 7])
-        )
-        # self._loss_fn = F1WithLogitsLoss()
-        
-    def _get_metrics(self, logits, labels):
-        normed_logits = torch.sigmoid(logits)
-        # print(preds)
-
-        # acc
-        acc = accuracy(normed_logits, labels)
-
-        # f1
-        f1_ = f1(
-            normed_logits, labels, num_classes=self.num_classes, 
-            average=self.hparams.metric_averaging)
-
-        # precision and recall
-        precision_, recall_ = precision_recall(
-            normed_logits, labels, num_classes=self.num_classes,
-            average=self.hparams.metric_averaging)
-        
-        return acc, f1_, precision_, recall_
         
     def loss(self, predictions: dict, targets: dict) -> torch.tensor:
         return self._loss_fn(predictions["logits"], targets["labels"].float())
@@ -127,21 +122,29 @@ class HOCClassifier(BaseClassifier):
                 - lengths: source lengths [batch_size]
 
             Returns:
-                Dictionary with model outputs (e.g: logits)
+                Dictionary with model logit outputs of size 
+                (batch_size, num_classes) 
             """
         # _process_tokens is defined in BaseClassifier.
-        k = self._process_tokens(tokens_dict).permute(1, 0, 2) # (seq_len, batch_size, hidden_dim)
+        k = self._process_tokens(tokens_dict) # (batch_size, hidden_dim)
         
-        # Expand desc_emb which is (num_classes, hidden_dim) to 
-        # (batch_size, num_classes, hidden_dim). Permuting because 
-        # batch_size should be in dim=1 for self.label_attn.
-        q = torch.clone(self.desc_emb).type_as(k).expand(k.size(1),
-            self.desc_emb.size(0), self.desc_emb.size(1)).permute(1, 0, 2)
-
-        attn_output, _ = self.label_attn(q, k, k)   # (num_heads, batch_size, hidden_dim)
+        # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
+        desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=k)[:, 0, :].squeeze()
         
-        logits = self.classification_head(
-            attn_output).squeeze().permute(1, 0)    # (batch_size, num_classes)
+        # Expand desc_emb which is (num_classes, hidden_dim) to
+        # (batch_size, num_classes, hidden_dim).
+        q = desc_emb.expand(k.size(0), desc_emb.size(0), desc_emb.size(1))
+        
+        attn_output, _ = self.label_attn(q, k)
+        
+        # For Multiheadattention. Permuting because batch_size should be in dim=1 
+        # for self.label_attn.
+        # attn_output, _ = self.label_attn(
+            # q.transpose(1, 0), k.transpose(1, 0), k.transpose(1, 0)
+            # )   # (num_heads, batch_size, hidden_dim)
+        
+        logits = self.classification_head(attn_output).squeeze()
+        # logits = logits.transpose(1, 0)    # (batch_size, num_classes)
 
         return {"logits": logits}
     
