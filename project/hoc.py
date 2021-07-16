@@ -129,7 +129,10 @@ class HOCClassifier(BaseClassifier):
         k = self._process_tokens(tokens_dict) # (batch_size, seq_len, hidden_dim)
         
         # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
-        desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=k)[:, 0, :].squeeze()
+        # desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=k)[:, 0, :].squeeze()
+        
+        # random init
+        desc_emb = torch.nn.init.uniform_(torch.rand((self.num_classes, self.encoder_features)), a=0.0, b=1.0).type_as(k)
         
         q = desc_emb.expand(k.size(0), desc_emb.size(0), desc_emb.size(1))  # (batch_size, num_classes, hidden_dim)
         

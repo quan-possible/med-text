@@ -113,7 +113,7 @@ class BaseClassifier(pl.LightningModule):
         tokens = tokens[:, : lengths.max()]
 
         if type_as_tensor != None:
-            tokens = tokens.to(type_as_tensor.device)
+            tokens = tokens.to(type_as_tensor.device).detach()
             
         # When using just one GPU this should not change behavior
         # but when splitting batches across GPU the tokens have padding
