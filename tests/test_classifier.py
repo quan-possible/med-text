@@ -28,6 +28,8 @@ class TestModel():
 
         err_msg = f"Incorrect output shape!. Expect {(batch_size, n_classes)},\
             but got {res.size()} instead!"
+        pass
+    
         assert res.size() == torch.Size(
             [batch_size, n_classes]), err_msg
         
@@ -75,8 +77,8 @@ class TestModel():
             params = [np for np in model.named_parameters()
                       if np[1].requires_grad]
             
-        for name, _ in model.named_parameters():
-            print(name)
+        for n,p in model.named_parameters():
+            print(f"{n}: grad {p.requires_grad}")
 
         # take a copy
         initial_params = [(name, p.clone()) for (name, p) in params]
@@ -95,7 +97,7 @@ class TestModel():
                     or (not vars_change and not torch.equal(p0, p1)):
                     suspects.append(name)
 
-        err_msg = f"{suspects}{' did not change!' if vars_change else 'changed!'} after optimization."
+        err_msg = f"{suspects}{' did not change' if vars_change else ' changed'} after optimization!"
         assert len(suspects) == 0, err_msg
         
         print("Parameters changed after optimization!")

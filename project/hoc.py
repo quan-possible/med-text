@@ -45,9 +45,9 @@ class HOCClassifier(BaseClassifier):
     def num_classes(self):
         return self._num_classes
     
-    # @property
-    # def desc_emb(self):
-    #     return self._desc_emb
+    @property
+    def label_attn(self):
+        return self._label_attn
     
     @property
     def encoder(self):
@@ -97,11 +97,11 @@ class HOCClassifier(BaseClassifier):
         else:
             self.encoder_features = 768
 
-        # self.label_attn = nn.MultiheadAttention(
-        #     self.encoder_features, self.num_heads, dropout=0.2,
-        # )
+        self._label_attn = nn.MultiheadAttention(
+            self.encoder_features, self.num_heads, dropout=0.2,
+        )
 
-        self.label_attn = DotProductAttention(self.encoder_features)
+        # self.label_attn = DotProductAttention(self.encoder_features)
         
         # Classification head
         self._classification_head = nn.Sequential(
@@ -133,16 +133,16 @@ class HOCClassifier(BaseClassifier):
         
         q = desc_emb.expand(k.size(0), desc_emb.size(0), desc_emb.size(1))  # (batch_size, num_classes, hidden_dim)
         
-        attn_output, _ = self.label_attn(q, k)
+        # attn_output, _ = self.label_attn(k, k)
         
         # For Multiheadattention. Permuting because batch_size should be in dim=1 
         # for self.label_attn.
-        # attn_output, _ = self.label_attn(
-            # q.transpose(1, 0), k.transpose(1, 0), k.transpose(1, 0)
-            # )   # (num_heads, batch_size, hidden_dim)
+        attn_output, _ = self.label_attn(
+            q.transpose(1, 0), k.transpose(1, 0), k.transpose(1, 0)
+            )   # (num_heads, batch_size, hidden_dim)
         
         logits = self.classification_head(attn_output).squeeze()
-        # logits = logits.transpose(1, 0)    # (batch_size, num_classes)
+        logits = logits.transpose(1, 0)    # (batch_size, num_classes)
 
         return {"logits": logits}
     

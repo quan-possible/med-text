@@ -61,6 +61,10 @@ class BaseClassifier(pl.LightningModule):
     @abstractmethod
     def encoder(self):
         pass
+    
+    @property
+    def label_attn(self):
+        pass
 
     @property
     @abstractmethod
@@ -140,6 +144,7 @@ class BaseClassifier(pl.LightningModule):
         """ Sets different Learning rates for different parameter groups. """
         parameters = [
             {"params": self.classification_head.parameters()},
+            {"params": self.label_attn.parameters()},
             {
                 "params": self.encoder.parameters(),
                 "lr": self.encoder_learning_rate,
