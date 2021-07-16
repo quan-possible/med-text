@@ -125,15 +125,13 @@ class HOCClassifier(BaseClassifier):
                 Dictionary with model logit outputs of size 
                 (batch_size, num_classes) 
             """
-        # _process_tokens is defined in BaseClassifier.
-        k = self._process_tokens(tokens_dict) # (batch_size, hidden_dim)
+        # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
+        k = self._process_tokens(tokens_dict) # (batch_size, seq_len, hidden_dim)
         
         # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
         desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=k)[:, 0, :].squeeze()
         
-        # Expand desc_emb which is (num_classes, hidden_dim) to
-        # (batch_size, num_classes, hidden_dim).
-        q = desc_emb.expand(k.size(0), desc_emb.size(0), desc_emb.size(1))
+        q = desc_emb.expand(k.size(0), desc_emb.size(0), desc_emb.size(1))  # (batch_size, num_classes, hidden_dim)
         
         attn_output, _ = self.label_attn(q, k)
         
