@@ -3,13 +3,15 @@ import logging as log
 from argparse import ArgumentParser, Namespace
 from collections import OrderedDict
 
+from numpy import tanh
+
 from tokenizer import Tokenizer
 from datamodule import MedDataModule, Collator
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import optim
-from transformers import AutoModel
 from abc import abstractmethod
 
 import pytorch_lightning as pl
@@ -96,33 +98,10 @@ class BaseClassifier(pl.LightningModule):
     @abstractmethod
     def forward(self, tokens_dict):
         pass
-
+    
+    @abstractmethod
     def _build_model(self, encoder_model) -> None:
-        """ Init BERT model + tokenizer + classification head."""
-        # pass
-
-        self._encoder = AutoModel.from_pretrained(
-            encoder_model, output_hidden_states=True
-        )
-
-        # set the number of features our encoder model will return...
-        if encoder_model == "google/bert_uncased_L-2_H-128_A-2":
-            self.encoder_features = 128
-        else:
-            self.encoder_features = 768
-
-        self.label_attn = nn.MultiheadAttention(self.encoder_features,
-                                                self.num_heads,
-                                                dropout=0.2)
-
-        # Classification head
-        self._classification_head = nn.Sequential(
-            nn.Linear(self.encoder_features, self.encoder_features * 2),
-            nn.Tanh(),
-            nn.Linear(self.encoder_features * 2, self.encoder_features),
-            nn.Tanh(),
-            nn.Linear(self.encoder_features, 1),
-        )
+        pass
 
     def _process_tokens(self, tokens_dict):
 

@@ -72,6 +72,9 @@ class TestModel():
             # get a list of params that are allowed to change
             params = [np for np in model.named_parameters()
                       if np[1].requires_grad]
+            
+        for name, _ in model.named_parameters():
+            print(name)
 
         # take a copy
         initial_params = [(name, p.clone()) for (name, p) in params]

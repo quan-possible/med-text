@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
-from argparse import Namespace
+from tokenizer import Tokenizer
+from datamodule import MedDataModule, Collator
+from base_classifier import BaseClassifier
+from utils import F1WithLogitsLoss
 
+
+from argparse import Namespace
 import numpy as np
 import torch
 import torch.nn as nn
 from argparse import Namespace
 
 import pytorch_lightning as pl
+from transformers import AutoModel
 from torchmetrics.functional import accuracy, f1, precision_recall
-from tokenizer import Tokenizer
-from datamodule import MedDataModule, Collator
 from pytorch_lightning.utilities.seed import seed_everything
-from base_classifier import BaseClassifier
-from utils import F1WithLogitsLoss
 
 class HOCClassifier(BaseClassifier):
 
@@ -57,6 +59,34 @@ class HOCClassifier(BaseClassifier):
     @property
     def classification_head(self):
         return self._classification_head
+    
+    
+    def _build_model(self, encoder_model) -> None:
+        """ Init BERT model + tokenizer + classification head."""
+        # pass
+
+        self._encoder = AutoModel.from_pretrained(
+            encoder_model, output_hidden_states=True
+        )
+
+        # set the number of features our encoder model will return...
+        if encoder_model == "google/bert_uncased_L-2_H-128_A-2":
+            self.encoder_features = 128
+        else:
+            self.encoder_features = 768
+
+        self.label_attn = nn.MultiheadAttention(self.encoder_features,
+                                                self.num_heads,
+                                                dropout=0.2)
+
+        # Classification head
+        self._classification_head = nn.Sequential(
+            nn.Linear(self.encoder_features, self.encoder_features * 2),
+            nn.Tanh(),
+            nn.Linear(self.encoder_features * 2, self.encoder_features),
+            nn.Tanh(),
+            nn.Linear(self.encoder_features, 1),
+        )
 
 
     def _build_loss(self):
@@ -101,10 +131,12 @@ class HOCClassifier(BaseClassifier):
         q = torch.clone(self.desc_emb).type_as(k).expand(k.size(1),
             self.desc_emb.size(0), self.desc_emb.size(1)).permute(1, 0, 2)
 
-        attn_output, _ = self.label_attn(q, k, k)
-        # (batch_size, num_classes)
+        attn_output, _ = self.label_attn(q, k, k)   #
+        # print(attn_output.size())
+        # print(self.)
+        
         logits = self.classification_head(
-            attn_output).squeeze().permute(1, 0)
+            attn_output).squeeze().permute(1, 0)    # (batch_size, num_classes)
 
         return {"logits": logits}
     
