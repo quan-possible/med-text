@@ -197,8 +197,8 @@ class BaseClassifier(pl.LightningModule):
         self.log_dict(metrics, prog_bar=True, sync_dist=True)
         self.log("hp_metric", val_f1)
 
-        for param_group in self.optimizer.param_groups:
-            print(f"{param_group['lr']}")
+        # for param_group in self.optimizer.param_groups:
+        #     print(f"{param_group['lr']}")
 
         # # can also return just a scalar instead of a dict (return loss_val)
         return loss_acc

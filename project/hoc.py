@@ -32,11 +32,13 @@ class HOCClassifier(BaseClassifier):
         # Loss criterion initialization.
         self._build_loss()
         
-        # self.desc_tokens = self._detach_dict(desc_tokens)  # (batch_size, seq_len)
+        self.desc_tokens = desc_tokens  # (batch_size, seq_len)
         # self.desc_emb = torch.nn.init.uniform_(torch.rand(
         #     (self.num_classes, self.encoder_features)), a=0.0, b=1.0)
-        with torch.no_grad():
-            self.desc_emb = self._process_tokens(self.desc_tokens)[:, 0, :].squeeze()
+        static_desc_emb = False
+        if static_desc_emb:
+            with torch.no_grad():
+                self.desc_emb = self._process_tokens(self.desc_tokens)[:, 0, :].squeeze()
 
         if nr_frozen_epochs > 0:
             self.freeze_encoder()
@@ -133,10 +135,11 @@ class HOCClassifier(BaseClassifier):
         k = self._process_tokens(tokens_dict) # (batch_size, seq_len, hidden_dim)
         
         # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
-        # desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=k)[:, 0, :].squeeze()
+        self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=k)[:, 0, :].squeeze()
+        q = self.desc_emb.type_as(k).expand(k.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
         
         # random init
-        q = self.desc_emb.type_as(k).expand(k.size(0), self.desc_emb.size(0), self.desc_emb.size(1))  # (batch_size, num_classes, hidden_dim)
+        # q = self.desc_emb.type_as(k).expand(k.size(0), self.desc_emb.size(0), self.desc_emb.size(1)).detach()  # (batch_size, num_classes, hidden_dim)
         
         # attn_output, _ = self.label_attn(k, k)
         
