@@ -40,7 +40,10 @@ class HOCClassifier(BaseClassifier):
             
         # (batch_size, seq_len, hid_dim)
         # CLS pooling.
-        self._desc_emb = self._process_tokens(desc_tokens)[:, 0, :].squeeze()
+        _desc_emb = self._process_tokens(desc_tokens)\
+            [:, 0, :].squeeze()
+            
+        self.register_buffer("desc_emb", _desc_emb)
         
         self.nr_frozen_epochs = nr_frozen_epochs
     
@@ -48,9 +51,9 @@ class HOCClassifier(BaseClassifier):
     def num_classes(self):
         return self._num_classes
     
-    @property
-    def desc_emb(self):
-        return self._desc_emb
+    # @property
+    # def desc_emb(self):
+    #     return self._desc_emb
     
     @property
     def encoder(self):
@@ -75,9 +78,9 @@ class HOCClassifier(BaseClassifier):
         else:
             self.encoder_features = 768
 
-        self.label_attn = nn.MultiheadAttention(self.encoder_features,
-                                                self.num_heads,
-                                                dropout=0.2)
+        self.label_attn = nn.MultiheadAttention(
+            self.encoder_features, self.num_heads, dropout=0.2,
+        )
 
         # Classification head
         self._classification_head = nn.Sequential(
@@ -126,14 +129,16 @@ class HOCClassifier(BaseClassifier):
             Returns:
                 Dictionary with model outputs (e.g: logits)
             """
-
-        k = self._process_tokens(tokens_dict).permute(1, 0, 2)
+        # _process_tokens is defined in BaseClassifier.
+        k = self._process_tokens(tokens_dict).permute(1, 0, 2) # (seq_len, batch_size, hidden_dim)
+        
+        # Expand desc_emb which is (num_classes, hidden_dim) to 
+        # (batch_size, num_classes, hidden_dim). Permuting because 
+        # batch_size should be in dim=1 for self.label_attn.
         q = torch.clone(self.desc_emb).type_as(k).expand(k.size(1),
             self.desc_emb.size(0), self.desc_emb.size(1)).permute(1, 0, 2)
 
-        attn_output, _ = self.label_attn(q, k, k)   #
-        # print(attn_output.size())
-        # print(self.)
+        attn_output, _ = self.label_attn(q, k, k)   # (num_heads, batch_size, hidden_dim)
         
         logits = self.classification_head(
             attn_output).squeeze().permute(1, 0)    # (batch_size, num_classes)

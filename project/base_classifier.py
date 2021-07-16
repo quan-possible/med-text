@@ -52,10 +52,10 @@ class BaseClassifier(pl.LightningModule):
     def num_classes(self):
         pass
     
-    @property
-    @abstractmethod
-    def desc_emb(self):
-        pass
+    # @property
+    # @abstractmethod
+    # def desc_emb(self):
+    #     pass
 
     @property
     @abstractmethod
