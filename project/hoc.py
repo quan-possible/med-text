@@ -32,7 +32,10 @@ class HOCClassifier(BaseClassifier):
         # Loss criterion initialization.
         self._build_loss()
         
-        self.desc_tokens = desc_tokens  # (batch_size, seq_len)
+        self.desc_tokens = self._detach_dict(desc_tokens)  # (batch_size, seq_len)
+        # self.desc_emb = torch.nn.init.uniform_(torch.rand(
+        #     (self.num_classes, self.encoder_features)), a=0.0, b=1.0)
+        self.desc_emb = self._process_tokens(self.desc_tokens)[:, 0, :].squeeze()
 
         if nr_frozen_epochs > 0:
             self.freeze_encoder()
@@ -132,9 +135,7 @@ class HOCClassifier(BaseClassifier):
         # desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=k)[:, 0, :].squeeze()
         
         # random init
-        desc_emb = torch.nn.init.uniform_(torch.rand((self.num_classes, self.encoder_features)), a=0.0, b=1.0).type_as(k)
-        
-        q = desc_emb.expand(k.size(0), desc_emb.size(0), desc_emb.size(1))  # (batch_size, num_classes, hidden_dim)
+        q = self.desc_emb.expand(k.size(0), self.desc_emb.size(0), self.desc_emb.size(1))  # (batch_size, num_classes, hidden_dim)
         
         # attn_output, _ = self.label_attn(k, k)
         
@@ -149,6 +150,9 @@ class HOCClassifier(BaseClassifier):
 
         return {"logits": logits}
     
+    def _detach_dict(self, tensor_dict):
+        return {k:v.detach() for k,v in tensor_dict.items()}
+        
     def predict(self, sample: dict) -> dict:
         if self.training:
             self.eval()
