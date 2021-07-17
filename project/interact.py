@@ -24,7 +24,7 @@ def load_hparams(experiment_dir: str):
     return Namespace(**hparams)
 
 
-def load_model(experiment_dir: str, dataset, hparams, tokenizer, collator, num_classes):
+def load_model(experiment_dir: str, dataset, hparams, desc_tokens, tokenizer, collator):
     """ Function that loads the model from an experiment folder.
     :param experiment_dir: Path to the experiment folder.
     Return:
@@ -45,13 +45,15 @@ def load_model(experiment_dir: str, dataset, hparams, tokenizer, collator, num_c
     classifier = HOCClassifier if dataset == "hoc" else MTCClassifier
     
     model = classifier.load_from_checkpoint(
-        checkpoint_path, hparams=hparams, tokenizer=tokenizer,
+        checkpoint_path, hparams=hparams, desc_tokens=desc_tokens,
+        tokenizer=tokenizer,
         collator=collator, encoder_model=hparams.encoder_model,
         batch_size=hparams.batch_size,
         nr_frozen_epochs=hparams.nr_frozen_epochs,
         #  label_encoder,
         encoder_learning_rate=hparams.encoder_learning_rate, 
         learning_rate=hparams.learning_rate,
+        num_heads=hparams.num_heads,
     )
 
     
@@ -71,11 +73,11 @@ def main(args):
         hparams.dataset, hparams.batch_size, hparams.num_workers,
     )
     
-    num_classes = datamodule.num_classes
+    desc_tokens = datamodule.desc_tokens
 
     model = load_model(args.experiment_dir, hparams.dataset, 
-                       hparams, tokenizer,
-                       collator, num_classes)
+                       hparams, desc_tokens, tokenizer,
+                       collator)
     
     datamodule.setup()
     test_dataloader = datamodule.test_dataloader()
