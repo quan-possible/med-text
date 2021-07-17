@@ -268,7 +268,7 @@ class BaseClassifier(pl.LightningModule):
         )
         parser.add_argument(
             "--nr_frozen_epochs",
-            default=10,
+            default=15,
             type=int,
             help="Number of epochs we want to keep the encoder model frozen.",
         )
@@ -289,14 +289,14 @@ class BaseClassifier(pl.LightningModule):
         
         parser.add_argument(
             "--num_warmup_steps",
-            default=20,
+            default=50,
             type=int,
             help="Number of learning rate warm up steps",
         )
         
         parser.add_argument(
             "--num_training_steps",
-            default=300,
+            default=500,
             type=int,
             help="Number of training steps before learning rate get to 0.",
         )
