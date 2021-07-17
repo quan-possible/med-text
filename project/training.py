@@ -3,6 +3,7 @@ Runs a model on a single node across N-gpus.
 """
 import argparse
 import os
+import pprint
 from datetime import datetime
 
 from base_classifier import BaseClassifier
@@ -237,6 +238,10 @@ if __name__ == "__main__":
     hparams = parser.parse_args()
     
     hparams.dataset = parse_dataset_name(hparams.dataset)
+    
+    # For slurm dump
+    print("Hyperparameters: ")
+    pprint.pprint(vars(hparams), indent=4)
 
     # ---------------------
     # RUN TRAINING

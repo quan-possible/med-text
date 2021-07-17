@@ -13,6 +13,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
 from abc import abstractmethod
+from transformers import get_linear_schedule_with_warmup
 
 import pytorch_lightning as pl
 from torchnlp.utils import lengths_to_mask
@@ -142,16 +143,20 @@ class BaseClassifier(pl.LightningModule):
 
     def configure_optimizers(self):
         """ Sets different Learning rates for different parameter groups. """
-        parameters = [
+        head_param = [
             {"params": self.classification_head.parameters()},
             {"params": self.label_attn.parameters()},
-            {
-                "params": self.encoder.parameters(),
-                "lr": self.encoder_learning_rate,
-            },
         ]
-        self.optimizer = optim.Adam(parameters, lr=self.learning_rate)
-        return [self.optimizer], []
+        
+        self.encoder_optim = optim.Adam(self.encoder.parameters(), 
+                                        lr=self.encoder_learning_rate)
+        self.head_optim = optim.Adam(head_param, lr=self.learning_rate)
+        
+        scheduler = get_linear_schedule_with_warmup(
+            self.encoder_optim, self.hparams.num_warmup_steps,
+            self.hparams.num_training_steps)
+        
+        return [self.head_optim, self.encoder_optim], [scheduler]
 
     def on_epoch_end(self):
         """ Pytorch lightning hook """
@@ -240,19 +245,19 @@ class BaseClassifier(pl.LightningModule):
 
         parser.add_argument(
             "--encoder_learning_rate",
-            default=1e-05,
+            default=5e-05,
             type=float,
             help="Encoder specific learning rate.",
         )
         parser.add_argument(
             "--learning_rate",
-            default=3e-05,
+            default=1e-03,
             type=float,
             help="Classification head learning rate.",
         )
         parser.add_argument(
             "--nr_frozen_epochs",
-            default=1,
+            default=10,
             type=int,
             help="Number of epochs we want to keep the encoder model frozen.",
         )
@@ -270,6 +275,21 @@ class BaseClassifier(pl.LightningModule):
             type=int,
             help="Number of heads for label attention.",
         )
+        
+        parser.add_argument(
+            "--num_warmup_steps",
+            default=20,
+            type=int,
+            help="Number of learning rate warm up steps",
+        )
+        
+        parser.add_argument(
+            "--num_training_steps",
+            default=300,
+            type=int,
+            help="Number of training steps before learning rate get to 0.",
+        )
+        
 
         return parser
 
