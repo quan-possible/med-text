@@ -143,20 +143,31 @@ class BaseClassifier(pl.LightningModule):
 
     def configure_optimizers(self):
         """ Sets different Learning rates for different parameter groups. """
-        head_param = [
-            {"params": self.classification_head.parameters()},
+        
+        # # Optimizer:
+        # no_decay = ['_classification_head', '_label_attn']
+        # optimizer_grouped_parameters = [
+        #     {'params': [p for n, p in self.named_parameters() if not any(nd in n for nd in no_decay)],
+        #      'weight_decay': 0.01},
+        #     {'params': [p for n, p in self.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+        # ]
+        # optimizer = AdamW(optimizer_grouped_parameters, lr=self.hparams.learning_rate)
+        
+        parameters = [
+            {"params": self.classification_head.parameters()}, 
             {"params": self.label_attn.parameters()},
+            {"params": self.encoder.parameters(), 
+             "lr": self.encoder_learning_rate}
         ]
         
-        self.encoder_optim = optim.Adam(self.encoder.parameters(), 
-                                        lr=self.encoder_learning_rate)
-        self.head_optim = optim.Adam(head_param, lr=self.learning_rate)
+        self.optimizer = optim.Adam(parameters,
+                                        lr=self.learning_rate)
         
         scheduler = get_linear_schedule_with_warmup(
-            self.encoder_optim, self.hparams.num_warmup_steps,
+            self.optimizer, self.hparams.num_warmup_steps,
             self.hparams.num_training_steps)
         
-        return [self.head_optim, self.encoder_optim], [scheduler]
+        return [self.optimizer], [scheduler]
 
     def on_epoch_end(self):
         """ Pytorch lightning hook """
