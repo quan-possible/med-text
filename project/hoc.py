@@ -147,7 +147,7 @@ class HOCClassifier(BaseClassifier):
         # for self.label_attn.
         attn_output, _ = self.label_attn(
             q.transpose(1, 0), k.transpose(1, 0), k.transpose(1, 0)
-            )   # (num_heads, batch_size, hidden_dim)
+            )   # (num_classes, batch_size, hidden_dim) 
         
         logits = self.classification_head(attn_output).squeeze()
         logits = logits.transpose(1, 0)    # (batch_size, num_classes)
