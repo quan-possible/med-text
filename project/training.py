@@ -5,6 +5,8 @@ import argparse
 import os
 import pprint
 from datetime import datetime
+from timeit import default_timer as timer
+from datetime import timedelta
 
 from base_classifier import BaseClassifier
 from hoc import HOCClassifier
@@ -174,13 +176,13 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--min_epochs",
-        default=35,
+        default=25,
         type=int,
         help="Limits training to a minimum number of epochs",
     )
     parser.add_argument(
         "--max_epochs",
-        default=40,
+        default=30,
         type=int,
         help="Limits training to a max number number of epochs",
     )
@@ -232,6 +234,7 @@ if __name__ == "__main__":
     import os
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
     
+    start = timer()
     # each LightningModule defines arguments relevant to it
     parser = MedDataModule.add_model_specific_args(parser)
     parser = BaseClassifier.add_model_specific_args(parser)
@@ -247,3 +250,5 @@ if __name__ == "__main__":
     # RUN TRAINING
     # ---------------------
     main(hparams)
+    end = timer()
+    print(f"\nTime elapsed: {timedelta(seconds=end - start)}")
