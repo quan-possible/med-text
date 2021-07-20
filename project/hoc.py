@@ -18,11 +18,16 @@ from pytorch_lightning.utilities.seed import seed_everything
 
 class HOCClassifier(BaseClassifier):
 
-    def __init__(self, hparams, desc_tokens, tokenizer, collator, encoder_model,
-                 batch_size, nr_frozen_epochs, encoder_learning_rate, learning_rate, num_heads):
-        super().__init__(hparams, desc_tokens, tokenizer, collator, encoder_model,
-                         batch_size, nr_frozen_epochs,
-                         encoder_learning_rate, learning_rate, num_heads)
+    def __init__(
+        self, hparams, desc_tokens, tokenizer, collator, encoder_model, 
+        batch_size, nr_frozen_epochs, encoder_learning_rate, learning_rate, 
+        num_heads, static_desc_emb=True,
+    ):
+        super().__init__(
+            hparams, desc_tokens, tokenizer, collator, encoder_model,
+            batch_size, nr_frozen_epochs, encoder_learning_rate, 
+            learning_rate, num_heads,
+            )
         
         self._num_classes = 10 
         
@@ -33,10 +38,9 @@ class HOCClassifier(BaseClassifier):
         self._build_loss()
         
         self.desc_tokens = desc_tokens  # (batch_size, seq_len)
-        # self.desc_emb = torch.nn.init.uniform_(torch.rand(
-        #     (self.num_classes, self.encoder_features)), a=0.0, b=1.0)
-        static_desc_emb = False
-        if static_desc_emb:
+        
+        self.static_desc_emb = static_desc_emb
+        if self.static_desc_emb:
             with torch.no_grad():
                 self.desc_emb = self._process_tokens(self.desc_tokens)[:, 0, :].squeeze()
 
@@ -64,9 +68,7 @@ class HOCClassifier(BaseClassifier):
         return self._classification_head
     
     def _build_loss(self):
-        self._loss_fn = nn.BCEWithLogitsLoss(
-            pos_weight=torch.tensor([5, 15, 15, 15, 7, 5, 12, 4, 3, 7])
-        )
+        self._loss_fn = nn.BCEWithLogitsLoss()
         # self._loss_fn = F1WithLogitsLoss()
 
     def _get_metrics(self, logits, labels):
@@ -79,30 +81,33 @@ class HOCClassifier(BaseClassifier):
         # f1
         f1_ = f1(
             normed_logits, labels, num_classes=self.num_classes,
-            average=self.hparams.metric_averaging)
+            average=self.hparams.metric_averaging
+        )
 
         # precision and recall
         precision_, recall_ = precision_recall(
             normed_logits, labels, num_classes=self.num_classes,
-            average=self.hparams.metric_averaging)
+            average=self.hparams.metric_averaging
+        )
 
         return acc, f1_, precision_, recall_
     
     
     def _build_model(self, encoder_model) -> None:
         """ Init BERT model + tokenizer + classification head."""
-        # pass
-
-        self._encoder = AutoModel.from_pretrained(
-            encoder_model, output_hidden_states=True
-        )
-
-        # set the number of features our encoder model will return...
-        if encoder_model == "google/bert_uncased_L-2_H-128_A-2":
-            self.encoder_features = 128
+            
+        if encoder_model == "google/bigbird-pegasus-large-pubmed":
+            self.encoder_features = 1024
+            self._encoder = AutoModel.from_pretrained(
+                encoder_model, attention_type="original_full", output_hidden_states=True
+            )   
         else:
             self.encoder_features = 768
-
+            self._encoder = AutoModel.from_pretrained(
+                encoder_model, output_hidden_states=True
+            )
+            
+        # set the number of features our encoder model will return...
         self._label_attn = nn.MultiheadAttention(
             self.encoder_features, self.num_heads, dropout=0.2,
         )
@@ -135,7 +140,9 @@ class HOCClassifier(BaseClassifier):
         k = self._process_tokens(tokens_dict) # (batch_size, seq_len, hidden_dim)
         
         # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
-        self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=k)[:, 0, :].squeeze()
+        if not self.static_desc_emb:
+            self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=k)[:, 0, :].squeeze()
+        
         q = self.desc_emb.type_as(k).expand(k.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
         
         # random init
