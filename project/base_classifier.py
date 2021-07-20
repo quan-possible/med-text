@@ -2,8 +2,7 @@
 import logging as log
 from argparse import ArgumentParser, Namespace
 from collections import OrderedDict
-
-from numpy import tanh
+import pandas as pd
 
 from tokenizer import Tokenizer
 from datamodule import MedDataModule, Collator
@@ -221,17 +220,23 @@ class BaseClassifier(pl.LightningModule):
         return p_class_score
     
     def validation_epoch_end(self, outputs) -> None:
+        lbl_order = [5,9,8,3,1,6,4,2,0,7]
+        
         len_outputs = len(outputs) 
         res = torch.zeros(self.num_metrics, self.num_classes)
         for output in outputs:
             res += output
             
         res /= len_outputs
+        res = res[:,lbl_order]
             
         print("Per class metrics: ")
-        print(res)
+        print("f1: ", res[0])
+        print("precision: ", res[1])
+        print("recall: ", res[2])
         
-
+        df = pd.DataFrame
+        
     def test_step(self, batch: tuple, batch_idx: int,) -> dict:
         """ Similar to the training step but with the model in eval mode.
 
