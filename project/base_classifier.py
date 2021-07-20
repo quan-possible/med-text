@@ -234,8 +234,9 @@ class BaseClassifier(pl.LightningModule):
         print("f1: ", res[0])
         print("precision: ", res[1])
         print("recall: ", res[2])
+        self.register_buffer("p_class_metrics", res)
         
-        df = pd.DataFrame
+        self.log("per_class_metrics", self.p_class_metrics, sync_dist=True)
         
     def test_step(self, batch: tuple, batch_idx: int,) -> dict:
         """ Similar to the training step but with the model in eval mode.
