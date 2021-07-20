@@ -10,10 +10,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 from argparse import Namespace
+from collections import defaultdict, OrderedDict
 
 import pytorch_lightning as pl
 from transformers import AutoModel
-from torchmetrics.functional import accuracy, f1, precision_recall
+from torchmetrics.functional import accuracy, f1, precision, recall, precision_recall
 from pytorch_lightning.utilities.seed import seed_everything
 
 class HOCClassifier(BaseClassifier):
@@ -71,26 +72,32 @@ class HOCClassifier(BaseClassifier):
         self._loss_fn = nn.BCEWithLogitsLoss()
         # self._loss_fn = F1WithLogitsLoss()
 
-    def _get_metrics(self, logits, labels):
+    def get_metrics(self, logits, labels):
         normed_logits = torch.sigmoid(logits)
-        # print(preds)
-
+        
         # acc
         acc = accuracy(normed_logits, labels)
-
+        
+        # per class metrics
+        p_class_score = torch.zeros((self.num_metrics, self.num_classes))
+        p_class_f = [f1, precision, recall]
+        for y in range(self.num_classes):
+            for x, f in enumerate(p_class_f):
+                p_class_score[x, y] = f(logits[:, y], labels[:, y])
+        
         # f1
         f1_ = f1(
             normed_logits, labels, num_classes=self.num_classes,
             average=self.hparams.metric_averaging
         )
-
+        
         # precision and recall
         precision_, recall_ = precision_recall(
             normed_logits, labels, num_classes=self.num_classes,
             average=self.hparams.metric_averaging
         )
-
-        return acc, f1_, precision_, recall_
+        
+        return acc, f1_, precision_, recall_, p_class_score
     
     
     def _build_model(self, encoder_model) -> None:
@@ -154,7 +161,7 @@ class HOCClassifier(BaseClassifier):
         # for self.label_attn.
         attn_output, _ = self.label_attn(
             q.transpose(1, 0), k.transpose(1, 0), k.transpose(1, 0)
-            )   # (num_classes, batch_size, hidden_dim) 
+        )   # (num_classes, batch_size, hidden_dim) 
         
         logits = self.classification_head(attn_output).squeeze()
         logits = logits.transpose(1, 0)    # (batch_size, num_classes)

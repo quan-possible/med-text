@@ -45,6 +45,7 @@ class BaseClassifier(pl.LightningModule):
         self.num_heads = num_heads
         self.encoder_learning_rate = encoder_learning_rate
         self.learning_rate = learning_rate
+        self.num_metrics = 3
 
         self.save_hyperparameters(hparams)
 
@@ -73,7 +74,7 @@ class BaseClassifier(pl.LightningModule):
         pass
 
     @abstractmethod
-    def _get_metrics(self, logits, labels):
+    def get_metrics(self, logits, labels):
         pass
     
 
@@ -201,8 +202,8 @@ class BaseClassifier(pl.LightningModule):
         labels = targets["labels"]   # (batch_size, num_labels)
         logits = model_out["logits"]    # (batch_size, num_labels)
 
-        val_acc, val_f1, val_precision, val_recall = \
-            self._get_metrics(logits, labels)
+        val_acc, val_f1, val_precision, val_recall, p_class_score = \
+            self.get_metrics(logits, labels)
 
         loss_acc = OrderedDict({"val_loss": val_loss, "val_acc": val_acc})
         metrics = OrderedDict({"val_f1": val_f1,
@@ -217,7 +218,19 @@ class BaseClassifier(pl.LightningModule):
         #     print(f"{param_group['lr']}")
 
         # # can also return just a scalar instead of a dict (return loss_val)
-        return loss_acc
+        return p_class_score
+    
+    def validation_epoch_end(self, outputs) -> None:
+        len_outputs = len(outputs) 
+        res = torch.zeros(self.num_metrics, self.num_classes)
+        for output in outputs:
+            res += output
+            
+        res /= len_outputs
+            
+        print("Per class metrics: ")
+        print(res)
+        
 
     def test_step(self, batch: tuple, batch_idx: int,) -> dict:
         """ Similar to the training step but with the model in eval mode.
@@ -232,7 +245,7 @@ class BaseClassifier(pl.LightningModule):
         logits = model_out["logits"]    # (batch_size, num_labels)
 
         test_acc, test_f1, test_precision, test_recall = \
-            self._get_metrics(logits, labels)
+            self.get_metrics(logits, labels)
 
         metrics = OrderedDict({"test_acc": test_acc,
                                "test_f1": test_f1,
