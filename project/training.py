@@ -48,10 +48,12 @@ def main(hparams) -> None:
     
     if hparams.dataset == 'hoc':
         model = HOCClassifier(
-            hparams, desc_tokens, tokenizer, collator, hparams.encoder_model,
+            hparams, desc_tokens, tokenizer, collator,
+            hparams.encoder_model,
             hparams.batch_size, hparams.nr_frozen_epochs,
             hparams.encoder_learning_rate, hparams.learning_rate,
-            hparams.num_heads,
+            hparams.num_heads, hparams.num_warmup_steps,
+            hparams.num_training_steps, hparams.metric_averaging,
         )
     else:
         model = MTCClassifier(
@@ -121,7 +123,7 @@ def main(hparams) -> None:
         min_epochs=hparams.min_epochs,
         val_check_interval=hparams.val_check_interval,
         accelerator="ddp",
-        plugins=DDPPlugin(find_unused_parameters=False),
+        plugins=DDPPlugin(find_unused_parameters=True),
     )
     # ------------------------
     # 6 START TRAINING

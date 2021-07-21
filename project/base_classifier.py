@@ -30,7 +30,8 @@ class BaseClassifier(pl.LightningModule):
     def __init__(self, hparams, desc_tokens, tokenizer, collator,
                  encoder_model, batch_size, nr_frozen_epochs,
                  encoder_learning_rate, learning_rate,
-                 num_heads,
+                 num_heads, num_warmup_steps, num_training_steps,
+                 metric_averaging,
                  ) -> None:
         super(BaseClassifier, self).__init__()
 
@@ -45,6 +46,9 @@ class BaseClassifier(pl.LightningModule):
         self.encoder_learning_rate = encoder_learning_rate
         self.learning_rate = learning_rate
         self.num_metrics = 3
+        self.num_warmup_steps = num_warmup_steps
+        self.num_training_steps = num_training_steps
+        self.metric_averaging = metric_averaging
 
         self.save_hyperparameters(hparams)
 
@@ -164,8 +168,8 @@ class BaseClassifier(pl.LightningModule):
                                         lr=self.learning_rate)
         
         scheduler = get_linear_schedule_with_warmup(
-            self.optimizer, self.hparams.num_warmup_steps,
-            self.hparams.num_training_steps)
+            self.optimizer, self.num_warmup_steps,
+            self.num_training_steps)
         
         return [self.optimizer], [scheduler]
 
@@ -219,24 +223,24 @@ class BaseClassifier(pl.LightningModule):
         # # can also return just a scalar instead of a dict (return loss_val)
         return p_class_score
     
-    def validation_epoch_end(self, outputs) -> None:
-        lbl_order = [5,9,8,3,1,6,4,2,0,7]
+    # def validation_epoch_end(self, outputs) -> None:
+    #     lbl_order = [5,9,8,3,1,6,4,2,0,7]
         
-        len_outputs = len(outputs) 
-        res = torch.zeros(self.num_metrics, self.num_classes)
-        for output in outputs:
-            res += output
+    #     len_outputs = len(outputs) 
+    #     res = torch.zeros(self.num_metrics, self.num_classes)
+    #     for output in outputs:
+    #         res += output
             
-        res /= len_outputs
-        res = res[:,lbl_order]
+    #     res /= len_outputs
+    #     res = res[:,lbl_order]
+    #     # self.p_class_metrics = res.type_as(outputs[0])
             
-        print("Per class metrics: ")
-        print("f1: ", res[0])
-        print("precision: ", res[1])
-        print("recall: ", res[2])
-        self.register_buffer("p_class_metrics", res)
+    #     print("Per class metrics: ")
+    #     print("f1: ", res[0])
+    #     print("precision: ", res[1])
+    #     print("recall: ", res[2])
         
-        self.log("per_class_metrics", self.p_class_metrics, sync_dist=True)
+        # self.log("per_class_metrics", self.p_class_metrics, sync_dist=True)
         
     def test_step(self, batch: tuple, batch_idx: int,) -> dict:
         """ Similar to the training step but with the model in eval mode.

@@ -106,7 +106,7 @@ class TestModel():
 if __name__ == "__main__":
     
     seed_everything(69)
-
+    
     hparams = Namespace(
         encoder_model="bert-base-cased",
         data_path="./project/data",
@@ -114,12 +114,15 @@ if __name__ == "__main__":
         batch_size=2,
         num_workers=2,
         random_sampling=False,
-        nr_frozen_epochs=1,
+        nr_frozen_epochs=0,
         encoder_learning_rate=1e-05,
         learning_rate=3e-05,
         num_heads=8,
         tgt_txt_col="TEXT",
         tgt_lbl_col="LABEL",
+        metric_averaging="micro",
+        num_warmup_steps=50,
+        num_training_steps=100,
     )
 
     tokenizer = Tokenizer(hparams.encoder_model)
@@ -139,7 +142,8 @@ if __name__ == "__main__":
         hparams.encoder_model,
         hparams.batch_size, hparams.nr_frozen_epochs,
         hparams.encoder_learning_rate, hparams.learning_rate,
-        hparams.num_heads,
+        hparams.num_heads, hparams.num_warmup_steps,
+        hparams.num_training_steps, hparams.metric_averaging,
     )
     
     datamodule.setup()

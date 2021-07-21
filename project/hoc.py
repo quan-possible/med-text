@@ -22,13 +22,15 @@ class HOCClassifier(BaseClassifier):
     def __init__(
         self, hparams, desc_tokens, tokenizer, collator, encoder_model, 
         batch_size, nr_frozen_epochs, encoder_learning_rate, learning_rate, 
-        num_heads, static_desc_emb=True,
+        num_heads, num_warmup_steps, num_training_steps,
+        metric_averaging, static_desc_emb=True,
     ):
         super().__init__(
             hparams, desc_tokens, tokenizer, collator, encoder_model,
             batch_size, nr_frozen_epochs, encoder_learning_rate, 
-            learning_rate, num_heads,
-            )
+            learning_rate, num_heads, num_warmup_steps, num_training_steps,
+            metric_averaging,
+        )
         
         self._num_classes = 10 
         
@@ -88,13 +90,13 @@ class HOCClassifier(BaseClassifier):
         # f1
         f1_ = f1(
             normed_logits, labels, num_classes=self.num_classes,
-            average=self.hparams.metric_averaging
+            average=self.metric_averaging
         )
         
         # precision and recall
         precision_, recall_ = precision_recall(
             normed_logits, labels, num_classes=self.num_classes,
-            average=self.hparams.metric_averaging
+            average=self.metric_averaging
         )
         
         return acc, f1_, precision_, recall_, p_class_score
@@ -150,7 +152,7 @@ class HOCClassifier(BaseClassifier):
         if not self.static_desc_emb:
             self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=k)[:, 0, :].squeeze()
         
-        q = self.desc_emb.type_as(k).expand(k.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
+        q = self.desc_emb.clone().type_as(k).expand(k.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
         
         # random init
         # q = self.desc_emb.type_as(k).expand(k.size(0), self.desc_emb.size(0), self.desc_emb.size(1)).detach()  # (batch_size, num_classes, hidden_dim)
