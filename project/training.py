@@ -9,7 +9,7 @@ from timeit import default_timer as timer
 from datetime import timedelta
 
 from base_classifier import BaseClassifier
-from hoc import HOCClassifier
+from hoc_test import HOCClassifier
 from mtc import MTCClassifier 
 from datamodule import MedDataModule, Collator
 from tokenizer import Tokenizer

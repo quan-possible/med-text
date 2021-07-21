@@ -6,7 +6,7 @@ from base_classifier import BaseClassifier
 from datamodule import MedDataModule, Collator
 from tokenizer import Tokenizer
 from mtc import MTCClassifier
-from hoc import HOCClassifier
+from hoc_test import HOCClassifier
 
 import torch
 from argparse import Namespace

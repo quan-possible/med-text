@@ -157,21 +157,26 @@ class BaseClassifier(pl.LightningModule):
         # ]
         # optimizer = AdamW(optimizer_grouped_parameters, lr=self.hparams.learning_rate)
         
-        parameters = [
-            {"params": self.classification_head.parameters()}, 
-            {"params": self.label_attn.parameters()},
-            {"params": self.encoder.parameters(), 
-             "lr": self.encoder_learning_rate}
-        ]
+        # parameters = [
+        #     {"params": self.classification_head.parameters()}, 
+        #     {"params": self.label_attn.parameters()},
+        #     {"params": self.encoder.parameters(), 
+        #      "lr": self.encoder_learning_rate}
+        # ]
         
-        self.optimizer = optim.Adam(parameters,
-                                        lr=self.learning_rate)
+        # self.optimizer = optim.Adam(parameters,
+        #                                 lr=self.learning_rate)
         
-        scheduler = get_linear_schedule_with_warmup(
-            self.optimizer, self.num_warmup_steps,
-            self.num_training_steps)
+        # scheduler = get_linear_schedule_with_warmup(
+        #     self.optimizer, self.num_warmup_steps,
+        #     self.num_training_steps)
+        # return [self.optimizer], [scheduler]
         
-        return [self.optimizer], [scheduler]
+        
+        self.optimizer = optim.Adam(self.parameters(),
+                                    lr=self.learning_rate)
+        
+        return [self.optimizer], []
 
     def on_epoch_end(self):
         """ Pytorch lightning hook """
