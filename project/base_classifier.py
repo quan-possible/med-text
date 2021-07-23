@@ -162,7 +162,13 @@ class BaseClassifier(pl.LightningModule):
             self.num_warmup_steps, self.num_training_steps,
         )
 
-        return [self.optimizer], [self.lr_scheduler]
+        return {
+            'optimizer': self.optimizer,
+            'lr_scheduler': {
+                'scheduler': self.lr_scheduler,
+                'interval': 'step',
+            }
+        }
 
     def on_epoch_end(self):
         """ Pytorch lightning hook """

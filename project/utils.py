@@ -99,6 +99,32 @@ class F1WithLogitsLoss(nn.Module):
         return cost
 
 
+def calc_scheduler_lr(
+    lr, num_warmup_steps, num_training_steps, num_frozen_epochs, 
+    num_epochs, steps_p_epoch=17.5333
+):
+    
+    num_frozen_steps = num_frozen_epochs * steps_p_epoch
+    num_steps = num_epochs * steps_p_epoch
+    if num_warmup_steps < num_frozen_steps:
+        unfreeze_lr = lr/num_training_steps * (num_frozen_steps - num_warmup_steps)
+    else:
+        unfreeze_lr = lr/num_warmup_steps * num_frozen_steps
+        
+        step300_lr = lr / num_training_steps * 300 if \
+            300 - num_warmup_steps < num_training_steps else 0
+        step400_lr = lr / num_training_steps * 400 if \
+            400 - num_warmup_steps < num_training_steps else 0
+        final_lr = lr / num_training_steps * num_steps if \
+            num_steps - num_warmup_steps < num_training_steps else 0
+        
+    return dict(
+        unfreeze_lr=unfreeze_lr,
+        step300_lr=step300_lr,
+        step400_lr=step400_lr,
+        final_lr=final_lr,
+    )
+
 def get_lr_schedule(
     param_list, encoder_indices: list, optimizer,
     num_warmup_steps, num_training_steps, last_epoch=-1
