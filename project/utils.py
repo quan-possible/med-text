@@ -7,6 +7,8 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.optim.lr_scheduler import LambdaLR
+from torch import optim
 from torch import Tensor
 
 
@@ -80,23 +82,13 @@ class F1WithLogitsLoss(nn.Module):
         self.epsilon = epsilon
         
     def forward(self, logits, labels):
-        # assert y_hat.ndim == 2
-        # assert y.ndim == 1
-        # logits (batch_size, num_labels)
-        # labels (batch_size, num_labels)
         y_hat = torch.sigmoid(logits).float()
         y = labels.float()
-
-        # y = F.one_hot(y, 2).to(torch.float32)
-        # y_hat = F.softmax(y_hat, dim=1)
         
         tp = (y * y_hat).sum(dim=0)
         tn = ((1 - y) * (1 - y_hat)).sum(dim=0)
         fp = ((1 - y) * y_hat).sum(dim=0)
         fn = (y * (1 - y_hat)).sum(dim=0)
-
-        # precision = tp / (tp + fp + self.epsilon)
-        # recall = tp / (tp + fn + self.epsilon)
 
         f1_1 = 2*tp / (2*tp + fn + fp + self.epsilon)
         f1_1 = 1 - f1_1.clamp(min=self.epsilon, max=1-self.epsilon)
@@ -106,9 +98,43 @@ class F1WithLogitsLoss(nn.Module):
         
         return cost
 
+
+def get_lr_schedule(
+    param_list, encoder_indices: list, optimizer,
+    num_warmup_steps, num_training_steps, last_epoch=-1
+):
+    """
+    Create a schedule with a learning rate that decreases linearly from the initial lr set in the optimizer to 0, after
+    a warmup period during which it increases linearly from 0 to the initial lr set in the optimizer.
+
+    Args:
+        optimizer (:class:`~torch.optim.Optimizer`):
+            The optimizer for which to schedule the learning rate.
+        num_warmup_steps (:obj:`int`):
+            The number of steps for the warmup phase.
+        num_training_steps (:obj:`int`):
+            The total number of training steps.
+        last_epoch (:obj:`int`, `optional`, defaults to -1):
+            The index of the last epoch when resuming training.
+
+    Return:
+        :obj:`torch.optim.lr_scheduler.LambdaLR` with the appropriate schedule.
+    """
+    def encoder_lr_lambda(current_step: int):
+        if current_step < num_warmup_steps:
+            return float(current_step) / float(max(1, num_warmup_steps))
+        return max(
+            0.0, float(num_training_steps - current_step) 
+            / float(max(1, num_training_steps - num_warmup_steps))
+        )
+        
+    def normal_lr_lambda(current_step: int):
+        return 1.0
     
+    lambda_list = [encoder_lr_lambda if idx in encoder_indices 
+                   else normal_lr_lambda for idx in range(len(param_list))]
         
-        
+    return LambdaLR(optimizer, lambda_list, last_epoch)
 
 def mask_fill(
     fill_value: float,

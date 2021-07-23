@@ -52,8 +52,7 @@ class TestModel():
         # optimization step
         self.optim.step()
         
-    def test_params_update(self, batch, exceptions=["bert.pooler.dense.weight",
-                                                    "bert.pooler.dense.bias"], 
+    def test_params_update(self, batch, exceptions=["encoder"], 
                            vars_change=True, params=None):
         """Check if given variables (params) change or not during training
         If parameters (params) aren't provided, check all parameters.
@@ -91,8 +90,7 @@ class TestModel():
         # check if variables have changed
         suspects = []
         for (_, p0), (name, p1) in zip(initial_params, params):
-            
-            if name not in exceptions:
+            if not any(exception in name for exception in exceptions):
                 if (vars_change and torch.equal(p0, p1)) \
                     or (not vars_change and not torch.equal(p0, p1)):
                     suspects.append(name)

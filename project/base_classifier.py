@@ -17,7 +17,7 @@ from transformers import get_linear_schedule_with_warmup
 import pytorch_lightning as pl
 from torchnlp.utils import lengths_to_mask
 from pytorch_lightning.utilities.seed import seed_everything
-from utils import mask_fill
+from utils import mask_fill, get_lr_schedule
 
 
 class BaseClassifier(pl.LightningModule):
@@ -56,7 +56,7 @@ class BaseClassifier(pl.LightningModule):
     @abstractmethod
     def num_classes(self):
         pass
-    
+
     # @property
     # @abstractmethod
     # def desc_emb(self):
@@ -66,7 +66,7 @@ class BaseClassifier(pl.LightningModule):
     @abstractmethod
     def encoder(self):
         pass
-    
+
     @property
     def label_attn(self):
         pass
@@ -79,7 +79,6 @@ class BaseClassifier(pl.LightningModule):
     @abstractmethod
     def get_metrics(self, logits, labels):
         pass
-    
 
     @abstractmethod
     def predict(self, sample: dict):
@@ -103,11 +102,11 @@ class BaseClassifier(pl.LightningModule):
             torch.tensor with loss value.
         """
         pass
-    
+
     @abstractmethod
     def forward(self, tokens_dict):
         pass
-    
+
     @abstractmethod
     def _build_model(self, encoder_model) -> None:
         pass
@@ -119,12 +118,12 @@ class BaseClassifier(pl.LightningModule):
 
         if type_as_tensor != None:
             tokens = tokens.to(type_as_tensor.device).detach()
-            
+
         # When using just one GPU this should not change behavior
         # but when splitting batches across GPU the tokens have padding
         # from the entire original batch. In other words, use this when using DataParallel.
         mask = lengths_to_mask(lengths, device=tokens.device)
-        
+
         # Run BERT model.
         # output is (batch_size, sequence_length, hidden_size)
         emb = self.encoder(tokens, mask).last_hidden_state
@@ -147,36 +146,23 @@ class BaseClassifier(pl.LightningModule):
 
     def configure_optimizers(self):
         """ Sets different Learning rates for different parameter groups. """
+
+        encoder_names = ['encoder']
+        param_groups = [
+            {'params': [p for n, p in self.named_parameters()
+                        if any(nd in n for nd in encoder_names)], 
+             'lr': self.encoder_learning_rate, 'weight_decay': 0.01},
+            {'params': [p for n, p in self.named_parameters()
+                        if not any(nd in n for nd in encoder_names)]},
+        ]
         
-        # # Optimizer:
-        # no_decay = ['_classification_head', '_label_attn']
-        # optimizer_grouped_parameters = [
-        #     {'params': [p for n, p in self.named_parameters() if not any(nd in n for nd in no_decay)],
-        #      'weight_decay': 0.01},
-        #     {'params': [p for n, p in self.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
-        # ]
-        # optimizer = AdamW(optimizer_grouped_parameters, lr=self.hparams.learning_rate)
-        
-        # parameters = [
-        #     {"params": self.classification_head.parameters()}, 
-        #     {"params": self.label_attn.parameters()},
-        #     {"params": self.encoder.parameters(), 
-        #      "lr": self.encoder_learning_rate}
-        # ]
-        
-        # self.optimizer = optim.Adam(parameters,
-        #                                 lr=self.learning_rate)
-        
-        # scheduler = get_linear_schedule_with_warmup(
-        #     self.optimizer, self.num_warmup_steps,
-        #     self.num_training_steps)
-        # return [self.optimizer], [scheduler]
-        
-        
-        self.optimizer = optim.Adam(self.parameters(),
-                                    lr=self.learning_rate)
-        
-        return [self.optimizer], []
+        self.optimizer = optim.AdamW(param_groups, lr=self.learning_rate)
+        self.lr_scheduler = get_lr_schedule(
+            param_groups, [0], self.optimizer, 
+            self.num_warmup_steps, self.num_training_steps,
+        )
+
+        return [self.optimizer], [self.lr_scheduler]
 
     def on_epoch_end(self):
         """ Pytorch lightning hook """
@@ -199,6 +185,7 @@ class BaseClassifier(pl.LightningModule):
         loss = self.loss(model_out, targets)
 
         self.log("loss", loss)
+        self.log("learning_rate", self.optimizer.param_groups[0]['lr'], prog_bar=True)
 
         return loss
 
@@ -227,26 +214,26 @@ class BaseClassifier(pl.LightningModule):
 
         # # can also return just a scalar instead of a dict (return loss_val)
         return p_class_score
-    
+
     # def validation_epoch_end(self, outputs) -> None:
     #     lbl_order = [5,9,8,3,1,6,4,2,0,7]
-        
-    #     len_outputs = len(outputs) 
+
+    #     len_outputs = len(outputs)
     #     res = torch.zeros(self.num_metrics, self.num_classes)
     #     for output in outputs:
     #         res += output
-            
+
     #     res /= len_outputs
     #     res = res[:,lbl_order]
     #     # self.p_class_metrics = res.type_as(outputs[0])
-            
+
     #     print("Per class metrics: ")
     #     print("f1: ", res[0])
     #     print("precision: ", res[1])
     #     print("recall: ", res[2])
-        
+
         # self.log("per_class_metrics", self.p_class_metrics, sync_dist=True)
-        
+
     def test_step(self, batch: tuple, batch_idx: int,) -> dict:
         """ Similar to the training step but with the model in eval mode.
 
@@ -307,28 +294,27 @@ class BaseClassifier(pl.LightningModule):
             type=str,
             help="Averaging methods for validation metrics (micro, macro,...)",
         )
-        
+
         parser.add_argument(
             "--num_heads",
             default=8,
             type=int,
             help="Number of heads for label attention.",
         )
-        
+
         parser.add_argument(
             "--num_warmup_steps",
             default=50,
             type=int,
             help="Number of learning rate warm up steps",
         )
-        
+
         parser.add_argument(
             "--num_training_steps",
             default=500,
             type=int,
             help="Number of training steps before learning rate get to 0.",
         )
-        
 
         return parser
 
@@ -366,6 +352,7 @@ class BaseClassifier(pl.LightningModule):
     #         "val_loss": val_loss_mean,
     #         "val_acc": val_acc_mean,
     #     }
+
 
     #     return result
 if __name__ == "__main__":
