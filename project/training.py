@@ -51,7 +51,7 @@ def main(hparams) -> None:
         model = HOCClassifier(
             hparams, desc_tokens, tokenizer, collator,
             hparams.encoder_model,
-            hparams.batch_size, hparams.nr_frozen_epochs,
+            hparams.batch_size, hparams.num_frozen_epochs,
             hparams.encoder_learning_rate, hparams.learning_rate,
             hparams.num_heads, hparams.num_warmup_steps,
             hparams.num_training_steps, hparams.metric_averaging,
@@ -59,7 +59,7 @@ def main(hparams) -> None:
     else:
         model = MTCClassifier(
             hparams, tokenizer, collator, hparams.encoder_model,
-            hparams.batch_size, hparams.nr_frozen_epochs,
+            hparams.batch_size, hparams.num_frozen_epochs,
             hparams.encoder_learning_rate, hparams.learning_rate,
         )
 
