@@ -17,7 +17,8 @@ from utils import parse_dataset_name
 
 from pytorch_lightning import Trainer
 from pytorch_lightning.plugins import DDPPlugin
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, \
+    LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.utilities.seed import seed_everything
 from torchnlp.random import set_seed
@@ -94,6 +95,12 @@ def main(hparams) -> None:
     # --------------------------------
     # 4 INIT MODEL CHECKPOINT CALLBACK
     # -------------------------------
+    
+    lr_monitor = LearningRateMonitor(
+        logging_interval='step',
+        log_momentum=True,
+    )
+    
     checkpoint_callback = ModelCheckpoint(
         dirpath=ckpt_path,
         save_top_k=hparams.save_top_k,
@@ -110,7 +117,8 @@ def main(hparams) -> None:
     trainer = Trainer(
         logger=tb_logger,
         callbacks=[early_stop_callback,
-                   checkpoint_callback],
+                   checkpoint_callback,
+                   lr_monitor],
         gradient_clip_val=1.0,
         gpus=hparams.gpus,
         log_gpu_memory="all",

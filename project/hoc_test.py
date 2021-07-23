@@ -25,15 +25,15 @@ class HOCClassifier(BaseClassifier):
 
     def __init__(
         self, hparams, desc_tokens, tokenizer, collator, encoder_model,
-        batch_size, nr_frozen_epochs, encoder_learning_rate, learning_rate,
-        num_heads, num_warmup_steps, num_training_steps, metric_averaging,
-        static_desc_emb=True,
+        batch_size, num_frozen_epochs, encoder_learning_rate, learning_rate,
+        num_heads, num_warmup_steps, num_training_steps, 
+        metric_averaging, static_desc_emb=True,
     ):
         super().__init__(
             hparams, desc_tokens, tokenizer, collator, encoder_model,
-            batch_size, nr_frozen_epochs, encoder_learning_rate,
+            batch_size, num_frozen_epochs, encoder_learning_rate,
             learning_rate, num_heads, num_warmup_steps, num_training_steps, 
-            metric_averaging,
+            num_frozen_epochs, metric_averaging,
         )
 
         self._num_classes = 10
@@ -51,12 +51,12 @@ class HOCClassifier(BaseClassifier):
             with torch.no_grad():
                 self.desc_emb = self._process_tokens(self.desc_tokens)[:, 0, :].squeeze()
 
-        if nr_frozen_epochs > 0:
+        if num_frozen_epochs > 0:
             self.freeze_encoder()
         else:
             self._frozen = False
 
-        self.nr_frozen_epochs = nr_frozen_epochs
+        self.num_frozen_epochs = num_frozen_epochs
 
     @property
     def num_classes(self):
@@ -154,7 +154,7 @@ class HOCClassifier(BaseClassifier):
         self._classification_head = nn.Sequential(
             nn.Linear(self.encoder_features, self.encoder_features * 2),
             nn.Tanh(),
-            nn.Dropout,
+            nn.Dropout(),
             nn.Linear(self.encoder_features * 2, self.encoder_features),
             nn.Tanh(),
             nn.Linear(self.encoder_features, self.num_classes),
@@ -246,13 +246,8 @@ class HOCClassifier(BaseClassifier):
         return sample
     
     
-class LabelAttention(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-
-if __name__ == "__main__":
-
+def proto_main():
+    
     seed_everything(69)
 
     hparams = Namespace(
@@ -262,14 +257,14 @@ if __name__ == "__main__":
         batch_size=2,
         num_workers=2,
         random_sampling=False,
-        nr_frozen_epochs=0,
+        num_frozen_epochs=0,
         encoder_learning_rate=1e-05,
         learning_rate=3e-05,
         num_heads=8,
         tgt_txt_col="TEXT",
         tgt_lbl_col="LABEL",
-        metric_averaging = "micro",
-        num_warmup_steps=50, 
+        metric_averaging="micro",
+        num_warmup_steps=50,
         num_training_steps=100,
     )
 
@@ -288,11 +283,18 @@ if __name__ == "__main__":
     model = HOCClassifier(
         hparams, desc_tokens, tokenizer, collator,
         hparams.encoder_model,
-        hparams.batch_size, hparams.nr_frozen_epochs,
+        hparams.batch_size, hparams.num_frozen_epochs,
         hparams.encoder_learning_rate, hparams.learning_rate,
         hparams.num_heads, hparams.num_warmup_steps,
         hparams.num_training_steps, hparams.metric_averaging,
     )
+    
+    return hparams, tokenizer, collator, datamodule, model
+
+
+if __name__ == "__main__":
+
+    hparams, tokenizer, collator, datamodule, model = proto_main()
 
     trainer = pl.Trainer()
     trainer.fit(model, datamodule)
