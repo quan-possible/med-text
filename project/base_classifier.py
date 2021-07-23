@@ -185,7 +185,12 @@ class BaseClassifier(pl.LightningModule):
         loss = self.loss(model_out, targets)
 
         self.log("loss", loss)
-        self.log("learning_rate", self.optimizer.param_groups[0]['lr'], prog_bar=True)
+        self.log(
+            "learning_rate", torch.tensor(
+                self.optimizer.param_groups[0]['lr']
+            ).type_as(loss), 
+            prog_bar=True, sync_dist=True
+        )
 
         return loss
 

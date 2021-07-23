@@ -55,16 +55,6 @@ class Tokenizer(TextEncoder):
         """
         # return len(self.itos)
         return self.tokenizer.vocab_size
-        
-
-    # def encode(self, sequence: str) -> torch.Tensor:
-    #     """ Encodes a 'sequence'.
-    #     :param sequence: String 'sequence' to encode.
-        
-    #     :return: torch.Tensor with Encoding of the `sequence`.
-    #     """
-    #     sequence = TextEncoder.encode(self, sequence)
-    #     return self.tokenizer(sequence, return_tensors="pt")["input_ids"][0]
 
     def batch_encode(self, sentences: list):
         """
