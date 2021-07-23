@@ -33,7 +33,7 @@ class HOCClassifier(BaseClassifier):
             hparams, desc_tokens, tokenizer, collator, encoder_model,
             batch_size, num_frozen_epochs, encoder_learning_rate,
             learning_rate, num_heads, num_warmup_steps, num_training_steps, 
-            num_frozen_epochs, metric_averaging,
+            metric_averaging,
         )
 
         self._num_classes = 10

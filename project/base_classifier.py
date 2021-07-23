@@ -28,7 +28,7 @@ class BaseClassifier(pl.LightningModule):
     """
 
     def __init__(self, hparams, desc_tokens, tokenizer, collator,
-                 encoder_model, batch_size, nr_frozen_epochs,
+                 encoder_model, batch_size, num_frozen_epochs,
                  encoder_learning_rate, learning_rate,
                  num_heads, num_warmup_steps, num_training_steps,
                  metric_averaging,
@@ -39,7 +39,7 @@ class BaseClassifier(pl.LightningModule):
         self.desc_tokens = desc_tokens
         self.tokenizer = tokenizer
         self.collator = collator
-        self.nr_frozen_epochs = nr_frozen_epochs
+        self.num_frozen_epochs = num_frozen_epochs
         self.batch_size = batch_size
         self.encoder_model = encoder_model
         self.num_heads = num_heads
@@ -159,7 +159,8 @@ class BaseClassifier(pl.LightningModule):
         self.optimizer = optim.AdamW(param_groups, lr=self.learning_rate)
         self.lr_scheduler = get_lr_schedule(
             param_groups, [0], self.optimizer, 
-            self.num_warmup_steps, self.num_training_steps,
+            self.num_warmup_steps, self.num_training_steps, 
+            self.num_frozen_epochs,
         )
 
         return {
@@ -172,7 +173,7 @@ class BaseClassifier(pl.LightningModule):
 
     def on_epoch_end(self):
         """ Pytorch lightning hook """
-        if self.current_epoch + 1 >= self.nr_frozen_epochs:
+        if self.current_epoch + 1 >= self.num_frozen_epochs:
             self.unfreeze_encoder()
 
     def training_step(self, batch: tuple, batch_idx) -> dict:
@@ -293,7 +294,7 @@ class BaseClassifier(pl.LightningModule):
             help="Classification head learning rate.",
         )
         parser.add_argument(
-            "--nr_frozen_epochs",
+            "--num_frozen_epochs",
             default=15,
             type=int,
             help="Number of epochs we want to keep the encoder model frozen.",
@@ -377,7 +378,7 @@ if __name__ == "__main__":
         batch_size=2,
         num_workers=2,
         random_sampling=False,
-        nr_frozen_epochs=1,
+        num_frozen_epochs=1,
         encoder_learning_rate=1e-05,
         learning_rate=3e-05,
         tgt_txt_col="TEXT",
@@ -396,7 +397,7 @@ if __name__ == "__main__":
 
     model = HOCClassifier(
         hparams, tokenizer, collator, hparams.encoder_model,
-        hparams.batch_size, num_classes, hparams.nr_frozen_epochs,
+        hparams.batch_size, num_classes, hparams.num_frozen_epochs,
         hparams.encoder_learning_rate, hparams.learning_rate,
     )
 
