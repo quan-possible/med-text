@@ -136,18 +136,30 @@ class HOCClassifier(BaseClassifier):
         ])
         self.bn1d_list = nn.ModuleList([nn.BatchNorm1d(self.dim_conv) for size in filter_sizes])
         
-        label_attn_layer = LabelAttentionLayer(self.encoder_features, self.num_heads)
-        self._label_attn = self._get_clones(label_attn_layer, n_lbl_attn_layer)
-        # self.label_attn = DotProductAttention(self.encoder_features)
+        # label_attn_layer = LabelAttentionLayer(self.encoder_features, self.num_heads)
+        # self._label_attn = self._get_clones(label_attn_layer, n_lbl_attn_layer)
+        # # self.label_attn = DotProductAttention(self.encoder_features)
+        
+        # self.trans1 = nn.Transformer(
+        #     d_model=self.encoder_features, nhead=12, num_decoder_layers=2,
+        #     num_encoder_layers=2, batch_first=True,
+        # )
+        
+        # self.trans2 = nn.Transformer(
+        #     d_model=self.encoder_features, nhead=12, num_decoder_layers=2,
+        #     num_encoder_layers=2, batch_first=True,
+        # )
 
         # Classification head
         self._classification_head = nn.Sequential(
             nn.Linear(self.encoder_features, self.encoder_features * 2),
             nn.Tanh(),
+            nn.Dropout,
             nn.Linear(self.encoder_features * 2, self.encoder_features),
             nn.Tanh(),
             nn.Linear(self.encoder_features, self.num_classes),
         )
+        
 
     def loss(self, predictions: dict, targets: dict) -> torch.tensor:
         return self._loss_fn(predictions["logits"], targets["labels"].float())
@@ -166,33 +178,53 @@ class HOCClassifier(BaseClassifier):
         x = self._process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
         
         x = x.transpose(2, 1)  # (batch_size, hidden_dim, seq_len)
-        x = [F.relu(bn1d(conv1d(x))) for conv1d, bn1d in zip(self.conv1d_list, self.bn1d_list)]
         
-        src = torch.cat(x, dim=1).transpose(2, 1)  # (batch_size, seq_len, hidden_dim)
-        # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
-        if not self.static_desc_emb:
-            self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=src)[:, 0, :].squeeze()
-
-        key_value = self.desc_emb.clone().type_as(src)\
-            .expand(src.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
-            # (batch_size, num_classes, hidden_dim)
-
-        # For Multiheadattention. Permuting because batch_size should be in dim=1
-        # for self.label_attn.
-        # attn_output, _ = self.label_attn(
-        #     q.transpose(1, 0), k.transpose(1, 0), k.transpose(1, 0)
-        # )   # (num_classes, batch_size, hidden_dim)
+        x_list = [F.relu(bn1d(conv1d(x))) for conv1d, 
+             bn1d in zip(self.conv1d_list, self.bn1d_list)]
         
-        # (batch_size, seq_len, hidden_dim)
-        output = src
-        for mod in self.label_attn:
-            output = mod(output, key_value)
+        x_list = [F.max_pool1d(x, kernel_size=x.size(2)) for x in x_list]
+
+        x = torch.cat([x.squeeze(dim=2) for x in x_list], dim=1)
+        
+        logits = self.classification_head(x).squeeze()
+        
+        # src = torch.cat(x, dim=1).transpose(2, 1)  # (batch_size, seq_len, hidden_dim)
+        # # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
+        # if not self.static_desc_emb:
+        #     self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=src)[:, 0, :].squeeze()
+
+        # key_value = self.desc_emb.clone().type_as(src)\
+        #     .expand(src.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
+        #     # (batch_size, num_classes, hidden_dim)
+
+        # # For Multiheadattention. Permuting because batch_size should be in dim=1
+        # # for self.label_attn.
+        # # attn_output, _ = self.label_attn(
+        # #     q.transpose(1, 0), k.transpose(1, 0), k.transpose(1, 0)
+        # # )   # (num_classes, batch_size, hidden_dim)
+        
+        # # (batch_size, seq_len, hidden_dim)
+        # output = src
+        # for mod in self.label_attn:
+        #     output = mod(output, key_value)
+        
+        # src = self._process_tokens(tokens_dict)
+
+        # if not self.static_desc_emb:
+        #     self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=src)[:, 0, :].squeeze()
+            
+        # tgt = self.desc_emb.clone().type_as(src)\
+        #     .expand(src.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
+            
+        # tgt = self.trans1(src, tgt) 
+        # tgt = self.trans2(src, tgt)
 
         # print(output.size())
         # CLS pooling
-        attn_output = output[:,0,:]
+        # attn_output = output[:,0,:]
         
-        logits = self.classification_head(attn_output).squeeze()  # (batch_size, num_classes)
+        # logits = self.classification_head(tgt).squeeze()  # (batch_size, num_classes)
+        # logits = logits.transpose(1, 0)
 
         return {"logits": logits}
 
