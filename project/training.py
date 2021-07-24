@@ -55,6 +55,7 @@ def main(hparams) -> None:
             hparams.encoder_learning_rate, hparams.learning_rate,
             hparams.num_heads, hparams.num_warmup_steps,
             hparams.num_training_steps, hparams.metric_averaging,
+            hparams.max_epochs,
         )
     else:
         model = MTCClassifier(
@@ -117,12 +118,14 @@ def main(hparams) -> None:
         callbacks=[early_stop_callback,
                    checkpoint_callback,
                    lr_monitor],
-        gradient_clip_val=1.0,
+        # gradient_clip_val=1.0,
         gpus=hparams.gpus,
         log_gpu_memory="all",
         deterministic=True,
         check_val_every_n_epoch=1,
         fast_dev_run=False,
+        stochastic_weight_avg=True,
+        # auto_scale_batch_size=None,
         # auto_lr_find=True,
         accumulate_grad_batches=hparams.accumulate_grad_batches,
         max_epochs=hparams.max_epochs,

@@ -3,6 +3,7 @@ import json
 
 from datetime import datetime
 from pathlib import Path
+from decimal import Decimal, getcontext
 
 import torch
 import torch.nn as nn
@@ -100,12 +101,22 @@ class F1WithLogitsLoss(nn.Module):
 
 
 def calc_scheduler_lr(
-    encoder_lr_lambda, lr, num_warmup_steps, num_training_steps, num_frozen_epochs, num_epochs,
-    steps_p_epoch=17.5333
+    lr, num_warmup_steps, num_training_steps, num_frozen_epochs, num_epochs,
+    steps_p_epoch=17.296
 ):
     num_frozen_steps = steps_p_epoch * num_frozen_epochs
     total_num_steps = steps_p_epoch * num_epochs
-    
+    def encoder_lr_lambda(current_step: int):
+        if current_step >= num_frozen_steps:
+            current_step = current_step - num_frozen_steps
+        else:
+            return 0.0
+        if current_step < num_warmup_steps:
+            return float(current_step) / float(max(1, num_warmup_steps))
+        
+        res = round(float(num_training_steps - current_step) /
+                      float(max(1, num_training_steps - num_warmup_steps)), 8)
+        return max(0.0, res)
     mark = total_num_steps // 6
     mark1, mark2, mark3 = mark * 3, mark * 4, mark * 5
     res = {
@@ -122,8 +133,8 @@ def calc_scheduler_lr(
 
 def get_lr_schedule(
     param_list, encoder_indices: list, optimizer,
-    num_warmup_steps, num_training_steps, num_frozen_epochs,
-    num_epochs, steps_p_epoch=17.5333, last_epoch=-1,
+    num_warmup_steps, num_training_steps, num_frozen_epochs, num_epochs,
+    steps_p_epoch=17.296,
 ):
     """
     Create a schedule with a learning rate that decreases linearly from the initial lr set in the optimizer to 0, after
@@ -144,22 +155,23 @@ def get_lr_schedule(
     """
     num_frozen_steps = steps_p_epoch * num_frozen_epochs
     total_num_steps = steps_p_epoch * num_epochs
-    beta = 500
+    beta = 0
     
     def encoder_lr_lambda(current_step: int):
+        res = 0.0
         
-        if current_step >= num_frozen_steps:
+        if current_step < num_frozen_steps:
+            return res
+        else:
             current_step = current_step - num_frozen_steps
-        else: 
-            return 0
-        
+            
         if current_step < num_warmup_steps:
-            return float(current_step) / float(max(1, num_warmup_steps))
+            res = float(current_step) / float(max(1, num_warmup_steps))
+            
+        res = round(float(num_training_steps - current_step) /
+            float(max(1, num_training_steps - num_warmup_steps)), 4)
         
-        return max(
-            0.0, float(num_training_steps - current_step) 
-            / float(max(1, num_training_steps - num_warmup_steps))
-        )
+        return max(0.0, res)
         
     def normal_lr_lambda(current_step: int):
         return 1.0 - (current_step/(total_num_steps+beta))
@@ -167,7 +179,7 @@ def get_lr_schedule(
     lambda_list = [encoder_lr_lambda if idx in encoder_indices 
                    else normal_lr_lambda for idx in range(len(param_list))]
         
-    return LambdaLR(optimizer, lambda_list, last_epoch)
+    return LambdaLR(optimizer, lambda_list)
 
 def mask_fill(
     fill_value: float,
