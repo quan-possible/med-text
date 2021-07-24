@@ -99,37 +99,31 @@ class F1WithLogitsLoss(nn.Module):
         return cost
 
 
-# def calc_scheduler_lr(
-#     lr, num_warmup_steps, num_training_steps, num_frozen_epochs, 
-#     num_epochs, steps_p_epoch=17.5333
-# ):
+def calc_scheduler_lr(
+    encoder_lr_lambda, lr, num_warmup_steps, num_training_steps, num_frozen_epochs, num_epochs,
+    steps_p_epoch=17.5333
+):
+    num_frozen_steps = steps_p_epoch * num_frozen_epochs
+    total_num_steps = steps_p_epoch * num_epochs
     
-#     num_frozen_steps = num_frozen_epochs * steps_p_epoch
-#     num_steps = num_epochs * steps_p_epoch
-    
-#     if num_warmup_steps < num_frozen_steps:
-#         unfreeze_lr = lr - lr/num_training_steps * (num_frozen_steps - num_warmup_steps)
-#     else:
-#         unfreeze_lr = lr/num_warmup_steps * num_frozen_steps
+    mark = total_num_steps // 6
+    mark1, mark2, mark3 = mark * 3, mark * 4, mark * 5
+    res = {
+        "unfreeze_step": num_frozen_steps,
+        "end_step": total_num_steps,
+        "step300_lr": lr * encoder_lr_lambda(300),
+        "step" + str(mark1) + "_lr": lr * encoder_lr_lambda(mark1),
+        "step" + str(mark2) + "_lr": lr * encoder_lr_lambda(mark2),
+        "step" + str(mark3) + "_lr": lr * encoder_lr_lambda(mark3),
+        "final_lr": lr * encoder_lr_lambda(total_num_steps)
+    }
         
-#     step300_lr = lr - lr / num_training_steps * (300 - num_warmup_steps) if \
-#         300 - num_warmup_steps < num_training_steps else 0
-#     step400_lr = lr - lr / num_training_steps * (400 - num_warmup_steps) if \
-#         400 - num_warmup_steps < num_training_steps else 0
-#     final_lr = lr - lr / num_training_steps * (num_steps - num_warmup_steps) if \
-#         num_steps - num_warmup_steps < num_training_steps else 0
-        
-#     return dict(
-#         unfreeze_lr=unfreeze_lr,
-#         step300_lr=step300_lr,
-#         step400_lr=step400_lr,
-#         final_lr=final_lr,
-#     )
+    return res
 
 def get_lr_schedule(
     param_list, encoder_indices: list, optimizer,
     num_warmup_steps, num_training_steps, num_frozen_epochs,
-    steps_p_epoch=17.5333, last_epoch=-1,
+    num_epochs, steps_p_epoch=17.5333, last_epoch=-1,
 ):
     """
     Create a schedule with a learning rate that decreases linearly from the initial lr set in the optimizer to 0, after
@@ -149,6 +143,8 @@ def get_lr_schedule(
         :obj:`torch.optim.lr_scheduler.LambdaLR` with the appropriate schedule.
     """
     num_frozen_steps = steps_p_epoch * num_frozen_epochs
+    total_num_steps = steps_p_epoch * num_epochs
+    beta = 500
     
     def encoder_lr_lambda(current_step: int):
         
@@ -166,7 +162,7 @@ def get_lr_schedule(
         )
         
     def normal_lr_lambda(current_step: int):
-        return 1.0
+        return 1.0 - (current_step/(total_num_steps+beta))
     
     lambda_list = [encoder_lr_lambda if idx in encoder_indices 
                    else normal_lr_lambda for idx in range(len(param_list))]

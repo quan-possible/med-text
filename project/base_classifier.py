@@ -31,7 +31,7 @@ class BaseClassifier(pl.LightningModule):
                  encoder_model, batch_size, num_frozen_epochs,
                  encoder_learning_rate, learning_rate,
                  num_heads, num_warmup_steps, num_training_steps,
-                 metric_averaging,
+                 metric_averaging, max_epochs,
                  ) -> None:
         super(BaseClassifier, self).__init__()
 
@@ -49,6 +49,8 @@ class BaseClassifier(pl.LightningModule):
         self.num_warmup_steps = num_warmup_steps
         self.num_training_steps = num_training_steps
         self.metric_averaging = metric_averaging
+        self.max_epochs = max_epochs
+        # print(self.hparams)
 
         self.save_hyperparameters(hparams)
 
@@ -150,17 +152,19 @@ class BaseClassifier(pl.LightningModule):
         encoder_names = ['encoder']
         param_groups = [
             {'params': [p for n, p in self.named_parameters()
-                        if any(nd in n for nd in encoder_names)], 
+                        if any(nd in n for nd in encoder_names)],
+             'name': "encoder",
              'lr': self.encoder_learning_rate, 'weight_decay': 0.01},
             {'params': [p for n, p in self.named_parameters()
-                        if not any(nd in n for nd in encoder_names)]},
+                        if not any(nd in n for nd in encoder_names)],
+             'name': 'non-encoder'},
         ]
         
         self.optimizer = optim.AdamW(param_groups, lr=self.learning_rate)
         self.lr_scheduler = get_lr_schedule(
-            param_groups, [0], self.optimizer, 
+            param_groups, [0], self.optimizer,
             self.num_warmup_steps, self.num_training_steps, 
-            self.num_frozen_epochs,
+            self.num_frozen_epochs, self.max_epochs,
         )
 
         return {
@@ -192,12 +196,6 @@ class BaseClassifier(pl.LightningModule):
         loss = self.loss(model_out, targets)
 
         self.log("loss", loss)
-        self.log(
-            "learning_rate", torch.tensor(
-                self.optimizer.param_groups[0]['lr']
-            ).type_as(loss), 
-            prog_bar=True, sync_dist=True
-        )
 
         return loss
 

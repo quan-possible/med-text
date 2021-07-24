@@ -86,19 +86,17 @@ def main(hparams) -> None:
         + f"--{hparams.dataset}",
         name="",
     )
-
-    # Model Checkpoint Callback
-    ckpt_path = os.path.join(
-        hparams.log_dir, tb_logger.version, "checkpoints",
-    )
-
-    # --------------------------------
-    # 4 INIT MODEL CHECKPOINT CALLBACK
-    # -------------------------------
     
     lr_monitor = LearningRateMonitor(
         logging_interval='step',
-        log_momentum=True,
+        log_momentum=False,
+    )
+    # --------------------------------
+    # 4 INIT MODEL CHECKPOINT CALLBACK
+    # -------------------------------
+    # Model Checkpoint Callback
+    ckpt_path = os.path.join(
+        hparams.log_dir, tb_logger.version, "checkpoints",
     )
     
     checkpoint_callback = ModelCheckpoint(

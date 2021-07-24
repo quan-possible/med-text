@@ -27,13 +27,13 @@ class HOCClassifier(BaseClassifier):
         self, hparams, desc_tokens, tokenizer, collator, encoder_model,
         batch_size, num_frozen_epochs, encoder_learning_rate, learning_rate,
         num_heads, num_warmup_steps, num_training_steps, 
-        metric_averaging, static_desc_emb=True,
+        metric_averaging, max_epochs, static_desc_emb=True,
     ):
         super().__init__(
             hparams, desc_tokens, tokenizer, collator, encoder_model,
             batch_size, num_frozen_epochs, encoder_learning_rate,
             learning_rate, num_heads, num_warmup_steps, num_training_steps, 
-            metric_averaging,
+            metric_averaging, max_epochs,
         )
 
         self._num_classes = 10
