@@ -266,6 +266,7 @@ def proto_main():
         metric_averaging="micro",
         num_warmup_steps=50,
         num_training_steps=100,
+        max_epochs=50,
     )
 
     tokenizer = Tokenizer(hparams.encoder_model)
@@ -287,6 +288,7 @@ def proto_main():
         hparams.encoder_learning_rate, hparams.learning_rate,
         hparams.num_heads, hparams.num_warmup_steps,
         hparams.num_training_steps, hparams.metric_averaging,
+        hparams.max_epochs,
     )
     
     return hparams, tokenizer, collator, datamodule, model
@@ -295,6 +297,5 @@ def proto_main():
 if __name__ == "__main__":
 
     hparams, tokenizer, collator, datamodule, model = proto_main()
-
     trainer = pl.Trainer()
     trainer.fit(model, datamodule)
