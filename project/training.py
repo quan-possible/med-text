@@ -81,7 +81,7 @@ def main(hparams) -> None:
     # Tensorboard Callback
     
     tb_logger = TensorBoardLogger(
-        save_dir=hparams.log_dir,
+        save_dir=hparams.logdir,
         version=datetime.now().strftime("%d-%m-%Y--%H-%M-%S") \
         + f"--{hparams.encoder_model.replace('/','-')}"\
         + f"--{hparams.dataset}",
@@ -97,7 +97,7 @@ def main(hparams) -> None:
     # -------------------------------
     # Model Checkpoint Callback
     ckpt_path = os.path.join(
-        hparams.log_dir, tb_logger.version, "checkpoints",
+        hparams.logdir, tb_logger.version, "checkpoints",
     )
     
     checkpoint_callback = ModelCheckpoint(
@@ -234,7 +234,7 @@ if __name__ == "__main__":
     )
     
     parser.add_argument(
-        "--log_dir",
+        "--logdir",
         default="lyta-experiments/",
         type=str,
         help=(

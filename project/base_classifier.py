@@ -12,6 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
 from abc import abstractmethod
+from torch.optim.lr_scheduler import OneCycleLR
 from transformers import get_linear_schedule_with_warmup
 
 import pytorch_lightning as pl
@@ -161,10 +162,17 @@ class BaseClassifier(pl.LightningModule):
         ]
         
         self.optimizer = optim.AdamW(param_groups, lr=self.learning_rate)
-        self.lr_scheduler = get_lr_schedule(
-            param_groups, [0], self.optimizer,
-            self.num_warmup_steps, self.num_training_steps, 
-            self.num_frozen_epochs, self.max_epochs,
+        # self.lr_scheduler = get_lr_schedule(
+        #     param_groups, [0], self.optimizer,
+        #     self.num_warmup_steps, self.num_training_steps, 
+        #     self.num_frozen_epochs, self.max_epochs,
+        # )
+        self.lr_scheduler = OneCycleLR(
+            self.optimizer, max_lr=[5e-05, 1e-03], epochs=self.max_epochs,
+            total_steps=500, pct_start=0., anneal_strategy='linear',
+            # steps_per_epoch=17,
+            cycle_momentum=False, div_factor=2.50, final_div_factor=20.0,
+            three_phase=False, last_epoch=-1, verbose=False,
         )
 
         return {
