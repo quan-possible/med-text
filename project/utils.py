@@ -102,10 +102,10 @@ class F1WithLogitsLoss(nn.Module):
 
 def calc_scheduler_lr(
     lr, num_warmup_steps, num_training_steps, num_frozen_epochs, num_epochs,
-    steps_p_epoch=17.296
+    steps_per_epoch=17.296
 ):
-    num_frozen_steps = steps_p_epoch * num_frozen_epochs
-    total_num_steps = steps_p_epoch * num_epochs
+    num_frozen_steps = steps_per_epoch * num_frozen_epochs
+    total_num_steps = steps_per_epoch * num_epochs
     def encoder_lr_lambda(current_step: int):
         if current_step >= num_frozen_steps:
             current_step = current_step - num_frozen_steps
@@ -131,10 +131,13 @@ def calc_scheduler_lr(
         
     return res
 
+
 def get_lr_schedule(
     param_list, encoder_indices: list, optimizer,
-    num_warmup_steps, num_training_steps, num_frozen_epochs, num_epochs,
-    steps_p_epoch=17.296,
+    num_frozen_epochs, num_epochs, steps_per_epoch, 
+    warmup_pct=0.1, smallest_lr_pct=[0.05, 0.1],
+    #     num_warmup_steps, num_training_steps, num_frozen_epochs, num_epochs=10,
+    #     steps_per_epoch=1, smallest_lr_pct=0.05,
 ):
     """
     Create a schedule with a learning rate that decreases linearly from the initial lr set in the optimizer to 0, after
@@ -153,32 +156,34 @@ def get_lr_schedule(
     Return:
         :obj:`torch.optim.lr_scheduler.LambdaLR` with the appropriate schedule.
     """
-    num_frozen_steps = steps_p_epoch * num_frozen_epochs
-    total_num_steps = steps_p_epoch * num_epochs
-    beta = 0
-    
+    num_frozen_steps = steps_per_epoch * num_frozen_epochs
+    total_num_steps = steps_per_epoch * num_epochs
+    num_unfrozen_steps = total_num_steps - num_frozen_steps
+    num_warmup_steps = num_unfrozen_steps * warmup_pct
+    beta = 0.1 * total_num_steps
+
     def encoder_lr_lambda(current_step: int):
-        res = 0.0
-        
+        res = smallest_lr_pct[0]
+
         if current_step < num_frozen_steps:
             return res
         else:
             current_step = current_step - num_frozen_steps
-            
+
         if current_step < num_warmup_steps:
             res = float(current_step) / float(max(1, num_warmup_steps))
-            
-        res = round(float(num_training_steps - current_step) /
-            float(max(1, num_training_steps - num_warmup_steps)), 4)
-        
-        return max(0.0, res)
-        
+        else:
+            res = float(num_unfrozen_steps - current_step) \
+                / float(max(1, num_unfrozen_steps - num_warmup_steps))
+
+        return max(smallest_lr_pct[0], res)
+
     def normal_lr_lambda(current_step: int):
-        return 1.0 - (current_step/(total_num_steps+beta))
-    
-    lambda_list = [encoder_lr_lambda if idx in encoder_indices 
+        return max(smallest_lr_pct[1], 1.0 - (current_step / (total_num_steps + beta)))
+
+    lambda_list = [encoder_lr_lambda if idx in encoder_indices
                    else normal_lr_lambda for idx in range(len(param_list))]
-        
+
     return LambdaLR(optimizer, lambda_list)
 
 def mask_fill(

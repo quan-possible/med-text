@@ -162,18 +162,20 @@ class BaseClassifier(pl.LightningModule):
         ]
         
         self.optimizer = optim.AdamW(param_groups, lr=self.learning_rate)
-        # self.lr_scheduler = get_lr_schedule(
-        #     param_groups, [0], self.optimizer,
-        #     self.num_warmup_steps, self.num_training_steps, 
-        #     self.num_frozen_epochs, self.max_epochs,
-        # )
-        self.lr_scheduler = OneCycleLR(
-            self.optimizer, max_lr=[5e-05, 1e-03], epochs=self.max_epochs,
-            total_steps=500, pct_start=0., anneal_strategy='linear',
-            # steps_per_epoch=17,
-            cycle_momentum=False, div_factor=2.50, final_div_factor=20.0,
-            three_phase=False, last_epoch=-1, verbose=False,
+        
+        steps_per_epoch = 1303 / (self.batch_size * self.hparams.accumulate_grad_batches)
+        self.lr_scheduler = get_lr_schedule(
+            param_list=param_groups, encoder_indices=[0], optimizer=self.optimizer,
+            num_frozen_epochs=self.num_frozen_epochs, num_epochs=self.max_epochs, 
+            steps_per_epoch=steps_per_epoch, warmup_pct=0.1, smallest_lr_pct=[0.05, 0.1],
         )
+        # self.lr_scheduler = OneCycleLR(
+        #     self.optimizer, max_lr=[5e-05, 1e-03], epochs=self.max_epochs,
+        #     total_steps=500, pct_start=0., anneal_strategy='linear',
+        #     # steps_per_epoch=17,
+        #     cycle_momentum=False, div_factor=2.50, final_div_factor=20.0,
+        #     three_phase=False, last_epoch=-1, verbose=False,
+        # )
 
         return {
             'optimizer': self.optimizer,
