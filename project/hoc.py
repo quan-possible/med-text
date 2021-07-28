@@ -52,7 +52,7 @@ class HOCClassifier(BaseClassifier):
 
     def _build_loss(self):
         self._loss_fn = nn.BCEWithLogitsLoss(
-            pos_weight=torch.tensor([5, 15, 15, 15, 7, 5, 12, 4, 3, 7])
+            # pos_weight=torch.tensor([5, 15, 15, 15, 7, 5, 12, 4, 3, 7])
         )
         # self._loss_fn = F1WithLogitsLoss()
         

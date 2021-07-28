@@ -3,7 +3,10 @@ Runs a model on a single node across N-gpus.
 """
 import argparse
 import os
+import pprint
 from datetime import datetime
+from datetime import timedelta
+from timeit import default_timer as timer
 
 from base_classifier import BaseClassifier
 from hoc import HOCClassifier
@@ -37,6 +40,8 @@ def main(hparams) -> None:
         hparams.dataset, hparams.batch_size, 
         hparams.num_workers,
     )
+    print("Finished loading data!")
+    
     
     if hparams.dataset == 'hoc':
         model = HOCClassifier(
@@ -220,15 +225,21 @@ if __name__ == "__main__":
             "Logging of experiments and hparams directory."
         ),
     )
-
+    start = timer()
     # each LightningModule defines arguments relevant to it
     parser = MedDataModule.add_model_specific_args(parser)
     parser = BaseClassifier.add_model_specific_args(parser)
     hparams = parser.parse_args()
     
     hparams.dataset = parse_dataset_name(hparams.dataset)
-
+    
+    # For slurm dump
+    print("Hyperparameters: ")
+    pprint.pprint(vars(hparams), indent=4)
+    
     # ---------------------
     # RUN TRAINING
     # ---------------------
     main(hparams)
+    end = timer()
+    print(f"\nTime elapsed: {timedelta(seconds=end - start)}")

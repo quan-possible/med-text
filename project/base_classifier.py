@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import logging as log
+from math import ceil
 from argparse import ArgumentParser, Namespace
 from collections import OrderedDict
 
@@ -162,8 +163,16 @@ class BaseClassifier(pl.LightningModule):
                 "lr": self.encoder_learning_rate,
             },
         ]
+        steps_per_epoch = ceil(1303/(self.batch_size * 2))
         self.optimizer = optim.Adam(parameters, lr=self.learning_rate)
-        return [self.optimizer], []
+        self.lr_scheduler = optim.lr_scheduler.OneCycleLR(
+            self.optimizer, max_lr=[5e-05, 1e-03], epochs=20,
+            steps_per_epoch=steps_per_epoch, pct_start=0.1, anneal_strategy='linear',
+            cycle_momentum=False, div_factor=2.50, final_div_factor=20.0,
+            three_phase=False, last_epoch=-1, verbose=True
+        )
+        
+        return [self.optimizer], [self.lr_scheduler]
 
     def on_epoch_end(self):
         """ Pytorch lightning hook """
@@ -186,6 +195,7 @@ class BaseClassifier(pl.LightningModule):
         loss = self.loss(model_out, targets)
 
         self.log("loss", loss)
+        self.log("lr", self.optimizers().param_groups[0]['lr'])
 
         return loss
 
@@ -208,9 +218,6 @@ class BaseClassifier(pl.LightningModule):
         self.log_dict(loss_acc, prog_bar=True, sync_dist=True)
         self.log_dict(metrics, prog_bar=True, sync_dist=True)
         self.log("hp_metric", val_f1)
-
-        print(self.learning_rate)
-        print(self.encoder_learning_rate)
 
         # # can also return just a scalar instead of a dict (return loss_val)
         return loss_acc
