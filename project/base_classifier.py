@@ -17,7 +17,7 @@ from torchnlp.utils import lengths_to_mask
 from pytorch_lightning.utilities.seed import seed_everything
 from utils import mask_fill
 
-    
+
 class BaseClassifier(pl.LightningModule):
     """
     Sample model to show how to use a Transformer model to classify sentences.
@@ -26,9 +26,9 @@ class BaseClassifier(pl.LightningModule):
     """
 
     def __init__(self, desc_tokens, tokenizer, collator, hparams, * args, **kwargs
-                #  encoder_model,
-                #  batch_size, nr_frozen_epochs,
-                #  encoder_learning_rate, learning_rate,
+                 #  encoder_model,
+                 #  batch_size, nr_frozen_epochs,
+                 #  encoder_learning_rate, learning_rate,
                  ) -> None:
         super(BaseClassifier, self).__init__()
 
@@ -52,13 +52,11 @@ class BaseClassifier(pl.LightningModule):
     @abstractmethod
     def classification_head(self):
         pass
-    
+
     @abstractmethod
     def _get_metrics(self, logits, labels):
         pass
 
-
-        
     @abstractmethod
     def predict(self, sample: dict):
         """ Predict function.
@@ -68,7 +66,7 @@ class BaseClassifier(pl.LightningModule):
             Dictionary with the input text and the predicted label.
         """
         pass
-        
+
     @abstractmethod
     def loss(self, predictions: dict, targets: dict) -> torch.tensor:
         """
@@ -82,29 +80,11 @@ class BaseClassifier(pl.LightningModule):
         """
         pass
 
+    @abstractmethod
     def _build_model(self) -> None:
-        """ Init BERT model + tokenizer + classification head."""
-        # pass
-        
-        self._encoder = AutoModel.from_pretrained(
-            self.hparams.encoder_model, output_hidden_states=True
-        )
-
-        # set the number of features our encoder model will return...
-        if self.hparams.encoder_model == "google/bert_uncased_L-2_H-128_A-2":
-            encoder_features = 128
-        else:
-            encoder_features = 768
-
-        # Classification head
-        self._classification_head = nn.Sequential(
-            nn.Linear(encoder_features, encoder_features * 2),
-            nn.Tanh(),
-            nn.Linear(encoder_features * 2, encoder_features),
-            nn.Tanh(),
-            nn.Linear(encoder_features, self.num_classes),
-        )
-
+        pass
+    
+    @abstractmethod
     def forward(self, tokens_lengths):
         """ Usual pytorch forward function. 
         :param tokens_lengths: tuple of:
@@ -114,31 +94,7 @@ class BaseClassifier(pl.LightningModule):
         Returns:
             Dictionary with model outputs (e.g: logits)
         """
-        tokens, lengths = tokens_lengths['tokens'], \
-            tokens_lengths['lengths']
-        tokens = tokens[:, : lengths.max()]
-        
-        # When using just one GPU this should not change behavior
-        # but when splitting batches across GPU the tokens have padding
-        # from the entire original batch
-        mask = lengths_to_mask(lengths, device=tokens.device)
-
-        # Run BERT model. output is (batch_size, sequence_length, hidden_size)
-        word_embeddings = self.encoder(tokens, mask).last_hidden_state
-
-        # Average Pooling
-        word_embeddings = mask_fill(
-            0.0, tokens, word_embeddings, self.tokenizer.padding_index
-        )
-        sentemb = torch.sum(word_embeddings, 1)
-        sum_mask = mask.unsqueeze(-1).expand(word_embeddings.size()
-                                             ).float().sum(1)
-        sentemb = sentemb / sum_mask
-
-        # Classification head
-        logits = self.classification_head(sentemb)
-
-        return {"logits": logits}
+        pass
 
     def unfreeze_encoder(self) -> None:
         """ un-freezes the encoder layer. """
@@ -153,27 +109,30 @@ class BaseClassifier(pl.LightningModule):
         for param in self.encoder().parameters():
             param.requires_grad = False
         self._frozen = True
-        
+
     def configure_optimizers(self):
         """ Sets different Learning rates for different parameter groups. """
-        parameters = [
-            {"params": self.classification_head.parameters()},
-            {
-                "params": self.encoder.parameters(),
-                "lr": self.hparams.encoder_learning_rate,
-            },
+        encoder_names = ['encoder']
+        param_groups = [
+            {'params': [p for n, p in self.named_parameters()
+                        if any(nd in n for nd in encoder_names)],
+             'name': "encoder",
+             'lr': self.hparams.encoder_learning_rate, 'weight_decay': 0.01},
+            {'params': [p for n, p in self.named_parameters()
+                        if not any(nd in n for nd in encoder_names)],
+             'name': 'non-encoder'},
         ]
-        
-        self.optimizer = optim.Adam(parameters, lr=self.hparams.learning_rate)
-        
-        steps_per_epoch = ceil(1303/(self.hparams.batch_size * 2))
+
+        self.optimizer = optim.Adam(param_groups, lr=self.hparams.learning_rate)
+
+        steps_per_epoch = ceil(1303 / (self.hparams.batch_size * 2))
         self.lr_scheduler = optim.lr_scheduler.OneCycleLR(
             self.optimizer, max_lr=[5e-05, 1e-03], epochs=self.hparams.max_epochs,
             steps_per_epoch=steps_per_epoch, pct_start=0.1, anneal_strategy='linear',
             cycle_momentum=False, div_factor=2.50, final_div_factor=20.0,
             three_phase=False, last_epoch=-1, verbose=True
         )
-        
+
         return {
             'optimizer': self.optimizer,
             'lr_scheduler': {
@@ -186,7 +145,7 @@ class BaseClassifier(pl.LightningModule):
         """ Pytorch lightning hook """
         if self.current_epoch + 1 >= self.hparams.nr_frozen_epochs:
             self.unfreeze_encoder()
-            
+
     def training_step(self, batch: tuple, batch_idx) -> dict:
         """ 
         Runs one training step. This usually consists in the forward function followed
@@ -254,7 +213,7 @@ class BaseClassifier(pl.LightningModule):
 
         # can also return just a scalar instead of a dict (return loss_val)
         return metrics
-            
+
     @staticmethod
     def add_model_specific_args(parser: ArgumentParser) \
             -> ArgumentParser:
@@ -328,10 +287,6 @@ class BaseClassifier(pl.LightningModule):
     #         "val_acc": val_acc_mean,
     #     }
 
-
-
-
-
     #     return result
 if __name__ == "__main__":
 
@@ -366,8 +321,6 @@ if __name__ == "__main__":
         hparams.batch_size, num_classes, hparams.nr_frozen_epochs,
         hparams.encoder_learning_rate, hparams.learning_rate,
     )
-    
-    
 
     trainer = pl.Trainer()
     trainer.fit(model, datamodule)
