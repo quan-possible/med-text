@@ -37,7 +37,7 @@ class HOCClassifier(BaseClassifier):
         self.static_desc_emb = static_desc_emb
         if self.static_desc_emb:
             with torch.no_grad():
-                self.desc_emb = self._process_tokens(self.desc_tokens)[:, 0, :].squeeze()
+                self.desc_emb = self._process_tokens(self.desc_tokens)[:, 0, :].squeeze(dim=1)
                 
         if self.hparams.num_frozen_epochs > 0:
             self.freeze_encoder()
@@ -198,7 +198,7 @@ class HOCClassifier(BaseClassifier):
 
         # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
         if not self.static_desc_emb:
-            self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=k)[:, 0, :].squeeze()
+            self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=k)[:, 0, :].squeeze(dim=1)
 
         q = self.desc_emb.clone().type_as(k).expand(k.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
 
