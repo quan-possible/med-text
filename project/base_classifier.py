@@ -106,7 +106,7 @@ class BaseClassifier(pl.LightningModule):
 
     def freeze_encoder(self) -> None:
         """ freezes the encoder layer. """
-        for param in self.encoder().parameters():
+        for param in self.encoder.parameters():
             param.requires_grad = False
         self._frozen = True
 
