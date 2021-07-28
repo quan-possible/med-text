@@ -101,11 +101,11 @@ class F1WithLogitsLoss(nn.Module):
 
 
 def calc_scheduler_lr(
-    lr, num_warmup_steps, num_training_steps, num_frozen_epochs, num_epochs,
+    lr, num_warmup_steps, num_training_steps, num_frozen_epochs, scheduler_epochs,
     steps_per_epoch=17.296
 ):
     num_frozen_steps = steps_per_epoch * num_frozen_epochs
-    total_num_steps = steps_per_epoch * num_epochs
+    total_num_steps = steps_per_epoch * scheduler_epochs
     def encoder_lr_lambda(current_step: int):
         if current_step >= num_frozen_steps:
             current_step = current_step - num_frozen_steps
@@ -134,9 +134,9 @@ def calc_scheduler_lr(
 
 def get_lr_schedule(
     param_groups, encoder_indices: list, optimizer,
-    num_epochs, num_frozen_epochs, steps_per_epoch,
+    scheduler_epochs, num_frozen_epochs, steps_per_epoch,
     warmup_pct=0.1, smallest_lr_pct=[0.05, 0.15],
-    #     num_warmup_steps, num_training_steps, num_frozen_epochs, num_epochs=10,
+    #     num_warmup_steps, num_training_steps, num_frozen_epochs, scheduler_epochs=10,
     #     steps_per_epoch=1, smallest_lr_pct=0.05,
 ):
     """
@@ -157,7 +157,7 @@ def get_lr_schedule(
         :obj:`torch.optim.lr_scheduler.LambdaLR` with the appropriate schedule.
     """
     num_frozen_steps = steps_per_epoch * num_frozen_epochs
-    total_num_steps = steps_per_epoch * num_epochs
+    total_num_steps = steps_per_epoch * scheduler_epochs
     num_unfrozen_steps = total_num_steps - num_frozen_steps
     num_warmup_steps = num_unfrozen_steps * warmup_pct
     beta = 0.1 * total_num_steps

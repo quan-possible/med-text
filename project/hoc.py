@@ -80,6 +80,7 @@ class HOCClassifier(BaseClassifier):
         self._classification_head = nn.Sequential(
             nn.Linear(encoder_features, encoder_features * 2),
             nn.Tanh(),
+            nn.Dropout(),
             nn.Linear(encoder_features * 2, encoder_features),
             nn.Tanh(),
             nn.Linear(encoder_features, self.num_classes),
@@ -147,7 +148,7 @@ class HOCClassifier(BaseClassifier):
 
         x = torch.cat([x.squeeze(dim=2) for x in x_list], dim=1)
 
-        logits = self.classification_head(x).squeeze()
+        logits = self.classification_head(x)
         
         # tokens, lengths = tokens_dict['tokens'], \
         #     tokens_dict['lengths']

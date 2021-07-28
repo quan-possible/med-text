@@ -83,7 +83,7 @@ class BaseClassifier(pl.LightningModule):
     @abstractmethod
     def _build_model(self) -> None:
         pass
-    
+
     @abstractmethod
     def forward(self, tokens_lengths):
         """ Usual pytorch forward function. 
@@ -123,15 +123,15 @@ class BaseClassifier(pl.LightningModule):
              'name': 'non-encoder'},
         ]
 
-        self.optimizer = optim.Adam(param_groups, lr=self.hparams.learning_rate)
+        self.optimizer = optim.AdamW(param_groups, lr=self.hparams.learning_rate)
 
         steps_per_epoch = ceil(1303 / (self.hparams.batch_size * 2))
         self.lr_scheduler = get_lr_schedule(
             param_groups=param_groups, encoder_indices=[0], optimizer=self.optimizer,
-            num_epochs=self.hparams.max_epochs, num_frozen_epochs=self.hparams.num_frozen_epochs,
-            steps_per_epoch=steps_per_epoch, warmup_pct=0.1, smallest_lr_pct=[0.05, 0.15],
+            scheduler_epochs=self.hparams.scheduler_epochs, num_frozen_epochs=self.hparams.num_frozen_epochs,
+            steps_per_epoch=steps_per_epoch, warmup_pct=self.hparams.warmup_pct, smallest_lr_pct=[0.01, 0.4],
         )
-        
+
         # self.lr_scheduler = optim.lr_scheduler.OneCycleLR(
         #     self.optimizer, max_lr=[5e-05, 1e-03], epochs=self.hparams.max_epochs,
         #     steps_per_epoch=steps_per_epoch, pct_start=0.1, anneal_strategy='linear',
@@ -244,7 +244,7 @@ class BaseClassifier(pl.LightningModule):
         )
         parser.add_argument(
             "--num_frozen_epochs",
-            default=1,
+            default=10,
             type=int,
             help="Number of epochs we want to keep the encoder model frozen.",
         )
@@ -254,6 +254,20 @@ class BaseClassifier(pl.LightningModule):
             default="micro",
             type=str,
             help="Averaging methods for validation metrics (micro, macro,...)",
+        )
+
+        parser.add_argument(
+            "--warmup_pct",
+            default=0.1,
+            type=float,
+            help="Percentage of training steps used for warmup",
+        )
+
+        parser.add_argument(
+            "--scheduler_epochs",
+            default=45,
+            type=int,
+            help="Number of epochs the scheduler for the encoder is activated.",
         )
 
         return parser
@@ -292,6 +306,7 @@ class BaseClassifier(pl.LightningModule):
     #         "val_loss": val_loss_mean,
     #         "val_acc": val_acc_mean,
     #     }
+
 
     #     return result
 if __name__ == "__main__":
