@@ -16,39 +16,35 @@ from utils import F1WithLogitsLoss
 
 class HOCClassifier(BaseClassifier):
 
-    def __init__(self, hparams, tokenizer, collator, encoder_model,
-                 batch_size, nr_frozen_epochs, encoder_learning_rate, learning_rate,):
-        super().__init__(hparams, tokenizer, collator, encoder_model,
-                         batch_size, nr_frozen_epochs,
-                         #  label_encoder,
-                         encoder_learning_rate, learning_rate)
+    def __init__(self, desc_tokens, tokenizer, collator, hparams, *args, **kwargs):
+        super().__init__(desc_tokens, tokenizer, collator, hparams, *args, **kwargs)
         
         self._num_classes = 10 
         
         # build model
-        self._build_model(self.encoder_model)
+        self._build_model()
         
         # Loss criterion initialization.
         self._build_loss()
 
-        if nr_frozen_epochs > 0:
+        if self.hparams.nr_frozen_epochs > 0:
             self.freeze_encoder()
         else:
             self._frozen = False
-
-        self.nr_frozen_epochs = nr_frozen_epochs
     
+    @property
     def num_classes(self):
         return self._num_classes
     
+    @property
     def encoder(self):
         return self._encoder
 
+    @property
     def classification_head(self):
         return self._classification_head
 
     # def _f1_loss(output, target):
-
 
     def _build_loss(self):
         self._loss_fn = nn.BCEWithLogitsLoss(

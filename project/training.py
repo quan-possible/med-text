@@ -16,7 +16,8 @@ from tokenizer import Tokenizer
 from utils import parse_dataset_name
 
 from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, \
+    LearningRateMonitor
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.utilities.seed import seed_everything
 from torchnlp.random import set_seed
@@ -40,14 +41,17 @@ def main(hparams) -> None:
         hparams.dataset, hparams.batch_size, 
         hparams.num_workers,
     )
+    
+    desc_tokens = datamodule.desc_tokens
     print("Finished loading data!")
     
     
     if hparams.dataset == 'hoc':
         model = HOCClassifier(
-            hparams, tokenizer, collator, hparams.encoder_model,
-            hparams.batch_size, hparams.nr_frozen_epochs,
-            hparams.encoder_learning_rate, hparams.learning_rate,
+            desc_tokens, tokenizer, collator, hparams, **vars(hparams)
+            # hparams, tokenizer, collator, hparams.encoder_model,
+            # hparams.batch_size, hparams.nr_frozen_epochs,
+            # hparams.encoder_learning_rate, hparams.learning_rate,
         )
     else:
         model = MTCClassifier(
@@ -79,6 +83,11 @@ def main(hparams) -> None:
         + f"--{hparams.dataset}",
         name="",
     )
+    
+    lr_monitor = LearningRateMonitor(
+        logging_interval='step',
+        log_momentum=False,
+    )
 
     # Model Checkpoint Callback
     ckpt_path = os.path.join(
@@ -104,7 +113,8 @@ def main(hparams) -> None:
     trainer = Trainer(
         logger=tb_logger,
         callbacks=[early_stop_callback,
-                   checkpoint_callback],
+                   checkpoint_callback,
+                   lr_monitor],
         gradient_clip_val=1.0,
         gpus=hparams.gpus,
         log_gpu_memory="all",
@@ -225,6 +235,10 @@ if __name__ == "__main__":
             "Logging of experiments and hparams directory."
         ),
     )
+    
+    import os
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    
     start = timer()
     # each LightningModule defines arguments relevant to it
     parser = MedDataModule.add_model_specific_args(parser)
@@ -232,7 +246,7 @@ if __name__ == "__main__":
     hparams = parser.parse_args()
     
     hparams.dataset = parse_dataset_name(hparams.dataset)
-    
+
     # For slurm dump
     print("Hyperparameters: ")
     pprint.pprint(vars(hparams), indent=4)

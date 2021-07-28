@@ -25,39 +25,39 @@ class BaseClassifier(pl.LightningModule):
     :param hparams: ArgumentParser containing the hyperparameters.
     """
 
-    def __init__(self, hparams, tokenizer, collator, encoder_model,
-                 batch_size, nr_frozen_epochs,
-                 encoder_learning_rate, learning_rate,
+    def __init__(self, desc_tokens, tokenizer, collator, hparams, * args, **kwargs
+                #  encoder_model,
+                #  batch_size, nr_frozen_epochs,
+                #  encoder_learning_rate, learning_rate,
                  ) -> None:
         super(BaseClassifier, self).__init__()
 
         # self.hparams = hparams
+        self.desc_tokens = desc_tokens
         self.tokenizer = tokenizer
         self.collator = collator
-        self.nr_frozen_epochs = nr_frozen_epochs
-        self.batch_size = batch_size
-        self.encoder_model = encoder_model
-        self.encoder_learning_rate = encoder_learning_rate
-        self.learning_rate = learning_rate
-
         self.save_hyperparameters(hparams)
 
     @property
     @abstractmethod
     def num_classes(self):
         pass
-    
-    @abstractmethod
-    def _get_metrics(self, logits, labels):
-        pass
-    
+
+    @property
     @abstractmethod
     def encoder(self):
         pass
 
+    @property
     @abstractmethod
     def classification_head(self):
         pass
+    
+    @abstractmethod
+    def _get_metrics(self, logits, labels):
+        pass
+
+
         
     @abstractmethod
     def predict(self, sample: dict):
@@ -82,16 +82,16 @@ class BaseClassifier(pl.LightningModule):
         """
         pass
 
-    def _build_model(self, encoder_model) -> None:
+    def _build_model(self) -> None:
         """ Init BERT model + tokenizer + classification head."""
         # pass
         
         self._encoder = AutoModel.from_pretrained(
-            encoder_model, output_hidden_states=True
+            self.hparams.encoder_model, output_hidden_states=True
         )
 
         # set the number of features our encoder model will return...
-        if encoder_model == "google/bert_uncased_L-2_H-128_A-2":
+        if self.hparams.encoder_model == "google/bert_uncased_L-2_H-128_A-2":
             encoder_features = 128
         else:
             encoder_features = 768
@@ -102,7 +102,7 @@ class BaseClassifier(pl.LightningModule):
             nn.Tanh(),
             nn.Linear(encoder_features * 2, encoder_features),
             nn.Tanh(),
-            nn.Linear(encoder_features, self.num_classes()),
+            nn.Linear(encoder_features, self.num_classes),
         )
 
     def forward(self, tokens_lengths):
@@ -124,7 +124,7 @@ class BaseClassifier(pl.LightningModule):
         mask = lengths_to_mask(lengths, device=tokens.device)
 
         # Run BERT model. output is (batch_size, sequence_length, hidden_size)
-        word_embeddings = self.encoder()(tokens, mask).last_hidden_state
+        word_embeddings = self.encoder(tokens, mask).last_hidden_state
 
         # Average Pooling
         word_embeddings = mask_fill(
@@ -136,7 +136,7 @@ class BaseClassifier(pl.LightningModule):
         sentemb = sentemb / sum_mask
 
         # Classification head
-        logits = self.classification_head()(sentemb)
+        logits = self.classification_head(sentemb)
 
         return {"logits": logits}
 
@@ -144,7 +144,7 @@ class BaseClassifier(pl.LightningModule):
         """ un-freezes the encoder layer. """
         if self._frozen:
             log.info(f"\n-- Encoder model fine-tuning")
-            for param in self.encoder().parameters():
+            for param in self.encoder.parameters():
                 param.requires_grad = True
             self._frozen = False
 
@@ -157,26 +157,34 @@ class BaseClassifier(pl.LightningModule):
     def configure_optimizers(self):
         """ Sets different Learning rates for different parameter groups. """
         parameters = [
-            {"params": self.classification_head().parameters()},
+            {"params": self.classification_head.parameters()},
             {
-                "params": self.encoder().parameters(),
-                "lr": self.encoder_learning_rate,
+                "params": self.encoder.parameters(),
+                "lr": self.hparams.encoder_learning_rate,
             },
         ]
-        steps_per_epoch = ceil(1303/(self.batch_size * 2))
-        self.optimizer = optim.Adam(parameters, lr=self.learning_rate)
+        
+        self.optimizer = optim.Adam(parameters, lr=self.hparams.learning_rate)
+        
+        steps_per_epoch = ceil(1303/(self.hparams.batch_size * 2))
         self.lr_scheduler = optim.lr_scheduler.OneCycleLR(
-            self.optimizer, max_lr=[5e-05, 1e-03], epochs=20,
+            self.optimizer, max_lr=[5e-05, 1e-03], epochs=self.hparams.max_epochs,
             steps_per_epoch=steps_per_epoch, pct_start=0.1, anneal_strategy='linear',
             cycle_momentum=False, div_factor=2.50, final_div_factor=20.0,
             three_phase=False, last_epoch=-1, verbose=True
         )
         
-        return [self.optimizer], [self.lr_scheduler]
+        return {
+            'optimizer': self.optimizer,
+            'lr_scheduler': {
+                'scheduler': self.lr_scheduler,
+                'interval': 'step',
+            }
+        }
 
     def on_epoch_end(self):
         """ Pytorch lightning hook """
-        if self.current_epoch + 1 >= self.nr_frozen_epochs:
+        if self.current_epoch + 1 >= self.hparams.nr_frozen_epochs:
             self.unfreeze_encoder()
             
     def training_step(self, batch: tuple, batch_idx) -> dict:
