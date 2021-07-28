@@ -47,6 +47,11 @@ class BaseClassifier(pl.LightningModule):
     @abstractmethod
     def encoder(self):
         pass
+    
+    @property
+    @abstractmethod
+    def label_attn(self):
+        pass
 
     @property
     @abstractmethod
@@ -253,6 +258,13 @@ class BaseClassifier(pl.LightningModule):
             "--metric_averaging",
             default="micro",
             type=str,
+            help="Averaging methods for validation metrics (micro, macro,...)",
+        )
+        
+        parser.add_argument(
+            "--num_heads",
+            default=12,
+            type=int,
             help="Averaging methods for validation metrics (micro, macro,...)",
         )
 
