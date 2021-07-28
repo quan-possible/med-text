@@ -216,7 +216,7 @@ if __name__ == "__main__":
         batch_size=2,
         num_workers=2,
         random_sampling=False,
-        nr_frozen_epochs=1,
+        num_frozen_epochs=1,
         encoder_learning_rate=1e-05,
         learning_rate=3e-05,
         tgt_txt_col="TEXT",

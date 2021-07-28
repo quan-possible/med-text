@@ -15,7 +15,7 @@ from tokenizer import Tokenizer
 from datamodule import MedDataModule, Collator
 from torchnlp.utils import lengths_to_mask
 from pytorch_lightning.utilities.seed import seed_everything
-from utils import mask_fill
+from utils import mask_fill, get_lr_schedule
 
 
 class BaseClassifier(pl.LightningModule):
@@ -27,7 +27,7 @@ class BaseClassifier(pl.LightningModule):
 
     def __init__(self, desc_tokens, tokenizer, collator, hparams, * args, **kwargs
                  #  encoder_model,
-                 #  batch_size, nr_frozen_epochs,
+                 #  batch_size, num_frozen_epochs,
                  #  encoder_learning_rate, learning_rate,
                  ) -> None:
         super(BaseClassifier, self).__init__()
@@ -126,12 +126,18 @@ class BaseClassifier(pl.LightningModule):
         self.optimizer = optim.Adam(param_groups, lr=self.hparams.learning_rate)
 
         steps_per_epoch = ceil(1303 / (self.hparams.batch_size * 2))
-        self.lr_scheduler = optim.lr_scheduler.OneCycleLR(
-            self.optimizer, max_lr=[5e-05, 1e-03], epochs=self.hparams.max_epochs,
-            steps_per_epoch=steps_per_epoch, pct_start=0.1, anneal_strategy='linear',
-            cycle_momentum=False, div_factor=2.50, final_div_factor=20.0,
-            three_phase=False, last_epoch=-1, verbose=True
+        self.lr_scheduler = get_lr_schedule(
+            param_groups=param_groups, encoder_indices=[0], optimizer=self.optimizer,
+            num_epochs=self.hparams.max_epochs, num_frozen_epochs=self.hparams.num_frozen_epochs,
+            steps_per_epoch=steps_per_epoch, warmup_pct=0.1, smallest_lr_pct=[0.05, 0.15],
         )
+        
+        # self.lr_scheduler = optim.lr_scheduler.OneCycleLR(
+        #     self.optimizer, max_lr=[5e-05, 1e-03], epochs=self.hparams.max_epochs,
+        #     steps_per_epoch=steps_per_epoch, pct_start=0.1, anneal_strategy='linear',
+        #     cycle_momentum=False, div_factor=2.50, final_div_factor=20.0,
+        #     three_phase=False, last_epoch=-1, verbose=True
+        # )
 
         return {
             'optimizer': self.optimizer,
@@ -143,7 +149,7 @@ class BaseClassifier(pl.LightningModule):
 
     def on_epoch_end(self):
         """ Pytorch lightning hook """
-        if self.current_epoch + 1 >= self.hparams.nr_frozen_epochs:
+        if self.current_epoch + 1 >= self.hparams.num_frozen_epochs:
             self.unfreeze_encoder()
 
     def training_step(self, batch: tuple, batch_idx) -> dict:
@@ -237,7 +243,7 @@ class BaseClassifier(pl.LightningModule):
             help="Classification head learning rate.",
         )
         parser.add_argument(
-            "--nr_frozen_epochs",
+            "--num_frozen_epochs",
             default=1,
             type=int,
             help="Number of epochs we want to keep the encoder model frozen.",
@@ -299,7 +305,7 @@ if __name__ == "__main__":
         batch_size=2,
         num_workers=2,
         random_sampling=False,
-        nr_frozen_epochs=1,
+        num_frozen_epochs=1,
         encoder_learning_rate=1e-05,
         learning_rate=3e-05,
         tgt_txt_col="TEXT",
@@ -318,7 +324,7 @@ if __name__ == "__main__":
 
     model = HOCClassifier(
         hparams, tokenizer, collator, hparams.encoder_model,
-        hparams.batch_size, num_classes, hparams.nr_frozen_epochs,
+        hparams.batch_size, num_classes, hparams.num_frozen_epochs,
         hparams.encoder_learning_rate, hparams.learning_rate,
     )
 

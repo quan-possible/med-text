@@ -133,9 +133,9 @@ def calc_scheduler_lr(
 
 
 def get_lr_schedule(
-    param_list, encoder_indices: list, optimizer,
-    num_frozen_epochs, num_epochs, steps_per_epoch, 
-    warmup_pct=0.1, smallest_lr_pct=[0.05, 0.1],
+    param_groups, encoder_indices: list, optimizer,
+    num_epochs, num_frozen_epochs, steps_per_epoch,
+    warmup_pct=0.1, smallest_lr_pct=[0.05, 0.15],
     #     num_warmup_steps, num_training_steps, num_frozen_epochs, num_epochs=10,
     #     steps_per_epoch=1, smallest_lr_pct=0.05,
 ):
@@ -182,7 +182,7 @@ def get_lr_schedule(
         return max(smallest_lr_pct[1], 1.0 - (current_step / (total_num_steps + beta)))
 
     lambda_list = [encoder_lr_lambda if idx in encoder_indices
-                   else normal_lr_lambda for idx in range(len(param_list))]
+                   else normal_lr_lambda for idx in range(len(param_groups))]
 
     return LambdaLR(optimizer, lambda_list)
 

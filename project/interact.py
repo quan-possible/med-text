@@ -48,7 +48,7 @@ def load_model(experiment_dir: str, dataset, hparams, tokenizer, collator, num_c
         checkpoint_path, hparams=hparams, tokenizer=tokenizer,
         collator=collator, encoder_model=hparams.encoder_model,
         batch_size=hparams.batch_size,
-        nr_frozen_epochs=hparams.nr_frozen_epochs,
+        num_frozen_epochs=hparams.num_frozen_epochs,
         #  label_encoder,
         encoder_learning_rate=hparams.encoder_learning_rate, 
         learning_rate=hparams.learning_rate,

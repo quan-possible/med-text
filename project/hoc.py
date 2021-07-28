@@ -32,7 +32,7 @@ class HOCClassifier(BaseClassifier):
         # Loss criterion initialization.
         self._build_loss()
 
-        if self.hparams.nr_frozen_epochs > 0:
+        if self.hparams.num_frozen_epochs > 0:
             self.freeze_encoder()
         else:
             self._frozen = False
@@ -204,7 +204,7 @@ if __name__ == "__main__":
         batch_size=2,
         num_workers=2,
         random_sampling=False,
-        nr_frozen_epochs=1,
+        num_frozen_epochs=1,
         encoder_learning_rate=1e-05,
         learning_rate=3e-05,
         tgt_txt_col="TEXT",
@@ -221,7 +221,7 @@ if __name__ == "__main__":
 
     model = HOCClassifier(
         hparams, tokenizer, collator, hparams.encoder_model,
-        hparams.batch_size, hparams.nr_frozen_epochs,
+        hparams.batch_size, hparams.num_frozen_epochs,
         hparams.encoder_learning_rate, hparams.learning_rate,
     )
 
