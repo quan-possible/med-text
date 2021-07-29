@@ -42,7 +42,7 @@ tests/tests_tt_dir/
 processed/
 raw/
 lyta-experiments/
-experiments/
+*experiments/
 puhta-experiments/
 mahti-experiments/
 # PyInstaller

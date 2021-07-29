@@ -15,7 +15,7 @@ from tokenizer import Tokenizer
 from datamodule import MedDataModule, Collator
 from torchnlp.utils import lengths_to_mask
 from pytorch_lightning.utilities.seed import seed_everything
-from utils import mask_fill, get_lr_schedule
+from utils import mask_fill, get_lr_schedule, str2bool
 
 
 class BaseClassifier(pl.LightningModule):
@@ -119,14 +119,21 @@ class BaseClassifier(pl.LightningModule):
         """ Sets different Learning rates for different parameter groups. """
         encoder_names = ['encoder']
         param_groups = [
-            {'params': [p for n, p in self.named_parameters()
-                        if any(nd in n for nd in encoder_names)],
-             'name': "encoder",
-             'lr': self.hparams.encoder_learning_rate, 'weight_decay': 0.01},
-            {'params': [p for n, p in self.named_parameters()
-                        if not any(nd in n for nd in encoder_names)],
-             'name': 'non-encoder'},
+            {
+                'params': [p for n, p in self.named_parameters()
+                           if any(nd in n for nd in encoder_names)],
+                'name': "encoder",
+                'lr': self.hparams.encoder_learning_rate,
+                'weight_decay': 0.05,
+            },
+            {
+                'params': [p for n, p in self.named_parameters()
+                           if not any(nd in n for nd in encoder_names)],
+                'name': 'non-encoder',
+                'weight_decay': 0.1,
+            },
         ]
+
 
         self.optimizer = optim.AdamW(param_groups, lr=self.hparams.learning_rate)
 
@@ -279,8 +286,11 @@ class BaseClassifier(pl.LightningModule):
             "--scheduler_epochs",
             default=45,
             type=int,
-            help="Number of epochs the scheduler for the encoder is activated.",
+            help="Number of epochs the scheduler for the encoder is activated",
         )
+
+        parser.add_argument("--static_desc_emb", type=str2bool, default=False,
+                            help="Whether to update description embedding using BERT")
 
         return parser
 
