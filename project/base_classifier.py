@@ -124,13 +124,13 @@ class BaseClassifier(pl.LightningModule):
                            if any(nd in n for nd in encoder_names)],
                 'name': "encoder",
                 'lr': self.hparams.encoder_learning_rate,
-                'weight_decay': 0.05,
+                'weight_decay': self.hparams.weight_decay_nonencoder,
             },
             {
                 'params': [p for n, p in self.named_parameters()
                            if not any(nd in n for nd in encoder_names)],
                 'name': 'non-encoder',
-                'weight_decay': 0.1,
+                'weight_decay': self.hparams.weight_decay_encoder,
             },
         ]
 
@@ -141,7 +141,7 @@ class BaseClassifier(pl.LightningModule):
         self.lr_scheduler = get_lr_schedule(
             param_groups=param_groups, encoder_indices=[0], optimizer=self.optimizer,
             scheduler_epochs=self.hparams.scheduler_epochs, num_frozen_epochs=self.hparams.num_frozen_epochs,
-            steps_per_epoch=steps_per_epoch, warmup_pct=self.hparams.warmup_pct, smallest_lr_pct=[0.01, 0.4],
+            steps_per_epoch=steps_per_epoch, warmup_pct=self.hparams.warmup_pct, smallest_lr_pct=[0.05, 0.4],
         )
 
         # self.lr_scheduler = optim.lr_scheduler.OneCycleLR(
@@ -287,6 +287,34 @@ class BaseClassifier(pl.LightningModule):
             default=45,
             type=int,
             help="Number of epochs the scheduler for the encoder is activated",
+        )
+        
+        parser.add_argument(
+            "--weight_decay_encoder",
+            default=0.05,
+            type=float,
+            help="Weight decay for encoder",
+        )
+        
+        parser.add_argument(
+            "--weight_decay_nonencoder",
+            default=0.1,
+            type=float,
+            help="Weight decay for non-encoder",
+        )
+        
+        parser.add_argument(
+            "--smallest_lr_pct_encoder",
+            default=0.05,
+            type=float,
+            help="Smallest encoder learning rate being a percentage of the default learning rate",
+        )
+        
+        parser.add_argument(
+            "--smallest_lr_pct_nonencoder",
+            default=0.4,
+            type=float,
+            help="Smallest non-encoder learning rate being a percentage of the default learning rate",
         )
 
         parser.add_argument("--static_desc_emb", type=str2bool, default=False,
