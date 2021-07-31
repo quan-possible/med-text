@@ -5,9 +5,8 @@ from tokenizer import Tokenizer
 from datamodule import MedDataModule, Collator
 from utils import F1WithLogitsLoss, mask_fill
 
-
-
 import numpy as np
+import copy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -140,7 +139,7 @@ class HOCClassifier(BaseClassifier):
         # STACKED DESCRIPTION EMBEDDINGS
         #---------------------------------
         
-        label_attn_layer = LabelAttentionLayer(self.encoder_features, self.num_heads)
+        label_attn_layer = LabelAttentionLayer(self.encoder_features, self.hparams.num_heads)
         self._label_attn = self._get_clones(label_attn_layer, self.hparams.n_lbl_attn_layer)
         
         self._classification_head = nn.Sequential(
@@ -150,8 +149,7 @@ class HOCClassifier(BaseClassifier):
             nn.Linear(self.encoder_features * 2, self.encoder_features),
             nn.Tanh(),
         )
-        self.final_fc = self.Linear(self.encoder_features,self.num_classes)
-        xavier_uniform(self.final_fc)
+        self.final_fc = nn.Linear(self.encoder_features,self.num_classes)
 
     def _build_loss(self):
         self._loss_fn = nn.BCEWithLogitsLoss(
@@ -193,6 +191,9 @@ class HOCClassifier(BaseClassifier):
         emb = self.encoder(tokens, mask).last_hidden_state
 
         return emb
+    
+    def _get_clones(self, module, N):
+        return nn.ModuleList([copy.deepcopy(module) for i in range(N)])
     
     def forward(self, tokens_dict):
         """ Usual pytorch forward function. 
