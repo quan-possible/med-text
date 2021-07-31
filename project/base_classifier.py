@@ -316,9 +316,20 @@ class BaseClassifier(pl.LightningModule):
             type=float,
             help="Smallest non-encoder learning rate being a percentage of the default learning rate",
         )
+        
+        parser.add_argument(
+            "--n_lbl_attn_layer",
+            default=1,
+            type=int,
+            help="Number of label attention layers.",
+        )
 
-        parser.add_argument("--static_desc_emb", type=str2bool, default=False,
-                            help="Whether to update description embedding using BERT")
+        parser.add_argument(
+            "--static_desc_emb", 
+            type=str2bool, 
+            default=False,
+            help="Whether to update description embedding using BERT"
+        )
 
         return parser
 
