@@ -136,7 +136,7 @@ def calc_scheduler_lr(
 def get_lr_schedule(
     param_groups, encoder_indices: list, optimizer,
     scheduler_epochs, num_frozen_epochs, steps_per_epoch,
-    warmup_pct=0.1, smallest_lr_pct=[0.05, 0.15],
+    warmup_pct=[0.1, 0.1], smallest_lr_pct=[0.005, 0.005, 0.4],
     #     num_warmup_steps, num_training_steps, num_frozen_epochs, scheduler_epochs=10,
     #     steps_per_epoch=1, smallest_lr_pct=0.05,
 ):
@@ -160,7 +160,7 @@ def get_lr_schedule(
     num_frozen_steps = steps_per_epoch * num_frozen_epochs
     total_num_steps = steps_per_epoch * scheduler_epochs
     num_unfrozen_steps = total_num_steps - num_frozen_steps
-    num_warmup_steps = num_unfrozen_steps * warmup_pct
+    num_warmup_steps = num_unfrozen_steps * warmup_pct[0]
     beta = 0.1 * total_num_steps
 
     def encoder_lr_lambda(current_step: int):
@@ -178,12 +178,25 @@ def get_lr_schedule(
                 / float(max(1, num_unfrozen_steps - num_warmup_steps))
 
         return max(smallest_lr_pct[0], res)
+    
+    total_num_steps = steps_per_epoch * scheduler_epochs
+    num_warmup_steps = total_num_steps * warmup_pct[1]
+    
+    def lbl_attn_lambda(current_step: int):
+        if current_step < num_warmup_steps:
+            res = float(current_step) / float(max(1, num_warmup_steps))
+        else:
+            res = float(total_num_steps - current_step) \
+                / float(max(1, total_num_steps - num_warmup_steps))
+
+        return max(smallest_lr_pct[1], res)
 
     def normal_lr_lambda(current_step: int):
         return max(smallest_lr_pct[1], 1.0 - (current_step / (total_num_steps + beta)))
 
-    lambda_list = [encoder_lr_lambda if idx in encoder_indices
-                   else normal_lr_lambda for idx in range(len(param_groups))]
+    # lambda_list = [encoder_lr_lambda if idx in encoder_indices
+    #                else normal_lr_lambda for idx in range(len(param_groups))]
+    lambda_list = [encoder_lr_lambda, lbl_attn_lambda, normal_lr_lambda]
 
     return LambdaLR(optimizer, lambda_list)
 

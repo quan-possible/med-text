@@ -118,19 +118,27 @@ class BaseClassifier(pl.LightningModule):
     def configure_optimizers(self):
         """ Sets different Learning rates for different parameter groups. """
         encoder_names = ['encoder']
+        label_attn = ['_label_attn']
         param_groups = [
             {
                 'params': [p for n, p in self.named_parameters()
                            if any(nd in n for nd in encoder_names)],
                 'name': "encoder",
                 'lr': self.hparams.encoder_learning_rate,
-                'weight_decay': self.hparams.weight_decay_nonencoder,
+                'weight_decay': self.hparams.weight_decay_encoder,
             },
             {
                 'params': [p for n, p in self.named_parameters()
-                           if not any(nd in n for nd in encoder_names)],
-                'name': 'non-encoder',
+                           if any(nd in n for nd in label_attn)],
+                'name': "label_attention",
+                'lr': self.hparams.label_attn_lr,
                 'weight_decay': self.hparams.weight_decay_encoder,
+            },
+            {
+                'params': [p for n, p in self.named_parameters()
+                           if not any(nd in n for nd in (encoder_names + label_attn))],
+                'name': 'non-encoder',
+                'weight_decay': self.hparams.weight_decay_nonencoder,
             },
         ]
 
@@ -140,8 +148,11 @@ class BaseClassifier(pl.LightningModule):
         steps_per_epoch = ceil(1303 / (self.hparams.batch_size * 2))
         self.lr_scheduler = get_lr_schedule(
             param_groups=param_groups, encoder_indices=[0], optimizer=self.optimizer,
-            scheduler_epochs=self.hparams.scheduler_epochs, num_frozen_epochs=self.hparams.num_frozen_epochs,
-            steps_per_epoch=steps_per_epoch, warmup_pct=self.hparams.warmup_pct, smallest_lr_pct=[0.05, 0.4],
+            scheduler_epochs=self.hparams.scheduler_epochs, 
+            num_frozen_epochs=self.hparams.num_frozen_epochs,
+            steps_per_epoch=steps_per_epoch, 
+            warmup_pct=[self.hparams.warmup_pct, self.hparams.warmup_pct],
+            smallest_lr_pct=[0.005, 0.005, 0.4],
         )
 
         # self.lr_scheduler = optim.lr_scheduler.OneCycleLR(
@@ -329,6 +340,13 @@ class BaseClassifier(pl.LightningModule):
             type=str2bool, 
             default=False,
             help="Whether to update description embedding using BERT"
+        )
+        
+        parser.add_argument(
+            "--label_attn_lr",
+            type=float,
+            default=1e-04,
+            help="Learning rate for label attention layers"
         )
 
         return parser
