@@ -150,7 +150,30 @@ class HOCClassifier(BaseClassifier):
             nn.Tanh(),
         )
         self.final_fc = nn.Linear(self.encoder_features,self.num_classes)
-
+        
+        #---------------------------------
+        # TRANSFORMERS
+        #---------------------------------
+        
+        # trans_block = nn.Transformer(
+        #     d_model=self.encoder_features,
+        #     num_encoder_layers=2, 
+        #     num_decoder_layers=2, 
+        #     dropout=0.2, 
+        #     batch_first=True
+        # )
+        # self._label_attn = self._get_clones(trans_block, self.hparams.n_lbl_attn_layer)
+        
+        # self._classification_head = nn.Sequential(
+        #     nn.Linear(self.encoder_features, self.encoder_features * 2),
+        #     nn.Tanh(),
+        #     nn.Dropout(),
+        #     nn.Linear(self.encoder_features * 2, self.encoder_features),
+        #     nn.Tanh(),
+        # )
+        
+        # self.final_fc = nn.Linear(self.encoder_features,self.num_classes)
+        
     def _build_loss(self):
         self._loss_fn = nn.BCEWithLogitsLoss(
             # pos_weight=torch.tensor([5, 15, 15, 15, 7, 5, 12, 4, 3, 7])
@@ -275,19 +298,39 @@ class HOCClassifier(BaseClassifier):
         # DESCRIPTION EMBEDDINGS WITH TRANSFORMERS
         #-------------------------------------------
         
+        # # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
+        # x = self._process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
+        # # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
+        # if not self.static_desc_emb:
+        #     self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
 
+        # desc_emb = self.desc_emb.clone().type_as(x).expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
+        
+        # # (batch_size, seq_len, hidden_dim)
+        # output = desc_emb
+        # for mod in self.label_attn:
+        #     output = mod(x, output)
+
+        # output = self.classification_head(output)
+        # logits = self.final_fc.weight.mul(output).sum(dim=2).add(self.final_fc.bias)
+        
+        #---------------------------------
+        # TRANSFORMERS
+        #---------------------------------
+        
         # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
         x = self._process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
         # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
         if not self.static_desc_emb:
             self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
-
-        desc_emb = self.desc_emb.clone().type_as(x).expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
+            
+        desc_emb = self.desc_emb.clone().type_as(x)\
+            .expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
         
         # (batch_size, seq_len, hidden_dim)
         output = desc_emb
         for mod in self.label_attn:
-            output = mod(output, x)
+            output = mod(x, output)
 
         output = self.classification_head(output)
         logits = self.final_fc.weight.mul(output).sum(dim=2).add(self.final_fc.bias)

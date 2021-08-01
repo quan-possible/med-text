@@ -43,7 +43,7 @@ class LabelAttentionLayer(nn.Module):
 
         self.activation = nn.ReLU()
 
-    def forward(self, desc_emb, x):
+    def forward(self, x, desc_emb):
         r"""Pass the input through the label attention layer.
 
             Args:
