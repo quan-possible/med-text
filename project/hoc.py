@@ -67,7 +67,9 @@ class HOCClassifier(BaseClassifier):
         # pass
 
         self._encoder = AutoModel.from_pretrained(
-            self.hparams.encoder_model, output_hidden_states=True
+            self.hparams.encoder_model, 
+            # hidden_dropout_prob=0.1,
+            output_hidden_states=True,
         )
 
         # set the number of features our encoder model will return...
@@ -273,7 +275,7 @@ class HOCClassifier(BaseClassifier):
         # logits = self.classification_head(sentemb)
         
         #-------------------------
-        # DESCRIPTION EMBEDDINGS
+        # DESCRIPTION EMBEDDINGS WITH GENERAL ATTENTION
         #-------------------------
         
         # # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
@@ -295,37 +297,16 @@ class HOCClassifier(BaseClassifier):
         # logits = logits.transpose(1, 0)    # (batch_size, num_classes)
         
         #-------------------------------------------
-        # DESCRIPTION EMBEDDINGS WITH TRANSFORMERS
+        # DESCRIPTION EMBEDDINGS WITH MULTIHEAD BLOCKS
         #-------------------------------------------
-        
-        # # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
-        # x = self._process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
-        # # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
-        # if not self.static_desc_emb:
-        #     self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
-
-        # desc_emb = self.desc_emb.clone().type_as(x).expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
-        
-        # # (batch_size, seq_len, hidden_dim)
-        # output = desc_emb
-        # for mod in self.label_attn:
-        #     output = mod(x, output)
-
-        # output = self.classification_head(output)
-        # logits = self.final_fc.weight.mul(output).sum(dim=2).add(self.final_fc.bias)
-        
-        #---------------------------------
-        # TRANSFORMERS
-        #---------------------------------
         
         # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
         x = self._process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
         # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
         if not self.static_desc_emb:
             self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
-            
-        desc_emb = self.desc_emb.clone().type_as(x)\
-            .expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
+
+        desc_emb = self.desc_emb.clone().type_as(x).expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
         
         # (batch_size, seq_len, hidden_dim)
         output = desc_emb
@@ -334,6 +315,27 @@ class HOCClassifier(BaseClassifier):
 
         output = self.classification_head(output)
         logits = self.final_fc.weight.mul(output).sum(dim=2).add(self.final_fc.bias)
+        
+        #---------------------------------
+        # TRANSFORMERS
+        #---------------------------------
+        
+        # # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
+        # x = self._process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
+        # # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
+        # if not self.static_desc_emb:
+        #     self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
+            
+        # desc_emb = self.desc_emb.clone().type_as(x)\
+        #     .expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
+        
+        # # (batch_size, seq_len, hidden_dim)
+        # output = desc_emb
+        # for mod in self.label_attn:
+        #     output = mod(x, output)
+
+        # output = self.classification_head(output)
+        # logits = self.final_fc.weight.mul(output).sum(dim=2).add(self.final_fc.bias)
 
         return {"logits": logits}
 

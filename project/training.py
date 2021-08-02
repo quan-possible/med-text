@@ -29,7 +29,7 @@ def main(hparams) -> None:
     :param hparams:
     """
     set_seed(hparams.seed)
-    seed_everything(hparams.seed)
+    seed_everything(hparams.seed, workers=True)
     # ------------------------
     # 1 INIT LIGHTNING MODEL AND DATA
     # ------------------------
@@ -233,6 +233,15 @@ if __name__ == "__main__":
         type=str,
         help=(
             "Logging of experiments and hparams directory."
+        ),
+    )
+    
+    parser.add_argument(
+        "--last_change",
+        default="No change",
+        type=str,
+        help=(
+            "What's the newest change?"
         ),
     )
     

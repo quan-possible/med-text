@@ -25,11 +25,11 @@ class LabelAttentionLayer(nn.Module):
     """
 
     def __init__(self, d_model, nhead=12, dim_feedforward=2048, 
-            dropout=0.1, batch_first=True, 
+            dropout=0.5, batch_first=True, 
         ) -> None:
         super(LabelAttentionLayer, self).__init__()
         self.batch_first = batch_first
-        self.lbl_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        self.lbl_attn = nn.MultiheadAttention(d_model, nhead, dropout=0.1)
         # Implementation of Feedforward model
         self.linear1 = nn.Linear(d_model, dim_feedforward)
         self.dropout = nn.Dropout(dropout)
@@ -38,8 +38,8 @@ class LabelAttentionLayer(nn.Module):
         layer_norm_eps = 1e-05
         self.norm1 = nn.LayerNorm(d_model, eps=layer_norm_eps)
         self.norm2 = nn.LayerNorm(d_model, eps=layer_norm_eps)
-        self.dropout1 = nn.Dropout(dropout)
-        self.dropout2 = nn.Dropout(dropout)
+        self.dropout1 = nn.Dropout(0.5)
+        self.dropout2 = nn.Dropout(0.5)
 
         self.activation = nn.ReLU()
 
@@ -58,6 +58,7 @@ class LabelAttentionLayer(nn.Module):
             x = x.transpose(0,1)
             desc_emb = desc_emb.transpose(0,1)
         
+        # desc_emb = self.norm1(desc_emb)
         src2, _ = self.lbl_attn(desc_emb, x, x)
         src = desc_emb + self.dropout1(src2)
         src = self.norm1(src)

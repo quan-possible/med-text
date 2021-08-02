@@ -142,7 +142,6 @@ class BaseClassifier(pl.LightningModule):
             },
         ]
 
-
         self.optimizer = optim.AdamW(param_groups, lr=self.hparams.learning_rate)
 
         steps_per_epoch = ceil(1303 / (self.hparams.batch_size * 2))
@@ -152,7 +151,8 @@ class BaseClassifier(pl.LightningModule):
             num_frozen_epochs=self.hparams.num_frozen_epochs,
             steps_per_epoch=steps_per_epoch, 
             warmup_pct=[self.hparams.warmup_pct, self.hparams.warmup_pct],
-            smallest_lr_pct=[0.005, 0.005, 0.4],
+            smallest_lr_pct=[self.hparams.smallest_lr_pct_encoder, self.hparams.smallest_lr_pct_lbl_attn,
+                             self.hparams.smallest_lr_pct_nonencoder],
         )
 
         # self.lr_scheduler = optim.lr_scheduler.OneCycleLR(
@@ -295,7 +295,7 @@ class BaseClassifier(pl.LightningModule):
 
         parser.add_argument(
             "--scheduler_epochs",
-            default=45,
+            default=30,
             type=int,
             help="Number of epochs the scheduler for the encoder is activated",
         )
@@ -316,9 +316,16 @@ class BaseClassifier(pl.LightningModule):
         
         parser.add_argument(
             "--smallest_lr_pct_encoder",
-            default=0.05,
+            default=0.01,
             type=float,
             help="Smallest encoder learning rate being a percentage of the default learning rate",
+        )
+
+        parser.add_argument(
+            "--smallest_lr_pct_lbl_attn",
+            default=0.0001,
+            type=float,
+            help="Smallest non-encoder learning rate being a percentage of the default learning rate",
         )
         
         parser.add_argument(
