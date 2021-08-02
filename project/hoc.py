@@ -177,10 +177,10 @@ class HOCClassifier(BaseClassifier):
         # self.final_fc = nn.Linear(self.encoder_features,self.num_classes)
         
     def _build_loss(self):
-        self._loss_fn = nn.BCEWithLogitsLoss(
-            # pos_weight=torch.tensor([5, 15, 15, 15, 7, 5, 12, 4, 3, 7])
-        )
-        # self._loss_fn = F1WithLogitsLoss()
+        # self._loss_fn = nn.BCEWithLogitsLoss(
+        #     # pos_weight=torch.tensor([5, 15, 15, 15, 7, 5, 12, 4, 3, 7])
+        # )
+        self._loss_fn = F1WithLogitsLoss()
 
     def _get_metrics(self, logits, labels):
         normed_logits = torch.sigmoid(logits)
