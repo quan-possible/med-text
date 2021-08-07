@@ -61,6 +61,10 @@ class BaseClassifier(pl.LightningModule):
     @abstractmethod
     def _build_loss(self):
         pass
+    
+    @abstractmethod
+    def loss(self):
+        pass
 
     @abstractmethod
     def predict(self, sample: dict):
@@ -242,18 +246,6 @@ class BaseClassifier(pl.LightningModule):
 
         return {"logits": logits}
 
-    def loss(self, predictions: dict, targets: dict) -> torch.tensor:
-        """
-        Computes Loss value according to a loss function.
-        :param predictions: model specific output. Must contain a key 'logits' with
-            a tensor [batch_size x num_classes] with model predictions
-        :param labels: Label values [batch_size]
-
-        Returns:
-            torch.tensor with loss value.
-        """
-        return self._loss_fn(predictions["logits"], targets["labels"])
-
     def unfreeze_encoder(self) -> None:
         """ un-freezes the encoder layer. """
         if self._frozen:
@@ -297,17 +289,17 @@ class BaseClassifier(pl.LightningModule):
 
         self.optimizer = optim.AdamW(param_groups, lr=self.hparams.learning_rate)
 
-        # # crucial to converge
-        # steps_per_epoch = ceil(1303 / (self.hparams.batch_size * 2))
-        # self.lr_scheduler = get_lr_schedule(
-        #     param_groups=param_groups, encoder_indices=[0], optimizer=self.optimizer,
-        #     scheduler_epochs=self.hparams.scheduler_epochs,
-        #     num_frozen_epochs=self.hparams.num_frozen_epochs,
-        #     steps_per_epoch=steps_per_epoch,
-        #     warmup_pct=[self.hparams.warmup_pct, self.hparams.warmup_pct],
-        #     smallest_lr_pct=[self.hparams.smallest_lr_pct_encoder, self.hparams.smallest_lr_pct_lbl_attn,
-        #                      self.hparams.smallest_lr_pct_nonencoder],
-        # )
+        # crucial to converge
+        steps_per_epoch = ceil(1303 / (self.hparams.batch_size * 2))
+        self.lr_scheduler = get_lr_schedule(
+            param_groups=param_groups, encoder_indices=[0], optimizer=self.optimizer,
+            scheduler_epochs=self.hparams.scheduler_epochs,
+            num_frozen_epochs=self.hparams.num_frozen_epochs,
+            steps_per_epoch=steps_per_epoch,
+            warmup_pct=[self.hparams.warmup_pct, self.hparams.warmup_pct],
+            smallest_lr_pct=[self.hparams.smallest_lr_pct_encoder, self.hparams.smallest_lr_pct_lbl_attn,
+                             self.hparams.smallest_lr_pct_nonencoder],
+        )
 
         # self.lr_scheduler = optim.lr_scheduler.OneCycleLR(
         #     self.optimizer, max_lr=[5e-05, 1e-03], epochs=self.hparams.max_epochs,
@@ -318,10 +310,10 @@ class BaseClassifier(pl.LightningModule):
 
         return {
             'optimizer': self.optimizer,
-            # 'lr_scheduler': {
-            #     'scheduler': self.lr_scheduler,
-            #     'interval': 'step',
-            # }
+            'lr_scheduler': {
+                'scheduler': self.lr_scheduler,
+                'interval': 'step',
+            }
         }
 
     def on_epoch_end(self):

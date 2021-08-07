@@ -37,6 +37,18 @@ class MultiClassClassifier(BaseClassifier):
 
         return acc, f1_, precision_, recall_
 
+    def loss(self, predictions: dict, targets: dict) -> torch.tensor:
+        """
+        Computes Loss value according to a loss function.
+        :param predictions: model specific output. Must contain a key 'logits' with
+            a tensor [batch_size x num_classes] with model predictions
+        :param labels: Label values [batch_size]
+
+        Returns:
+            torch.tensor with loss value.
+        """
+        return self._loss_fn(predictions["logits"], targets["labels"])
+
     def predict(self, sample: dict) -> dict:
         if self.training:
             self.eval()
