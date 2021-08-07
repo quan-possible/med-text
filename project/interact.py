@@ -1,21 +1,50 @@
-import pathlib
-from pathlib import Path
-from argparse import ArgumentParser, Namespace
-from sys import path
-
-import pandas as pd
-import torch
-import yaml
-
 from base_classifier import BaseClassifier
-from hoc import HOCClassifier
-from mtc import MTCClassifier
+from multilabel import MultiLabelClassifier
+from multiclass import MultiClassClassifier
 from tokenizer import Tokenizer
 from datamodule import MedDataModule, Collator
-from pytorch_lightning import Trainer
 
-from torchmetrics.functional import f1, precision_recall
+import pathlib
+import yaml
+import pandas as pd
+from sys import path
+from pathlib import Path
+from argparse import ArgumentParser, Namespace
 from collections import OrderedDict
+
+from pytorch_lightning import Trainer
+from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.utilities.seed import seed_everything
+from torchnlp.random import set_seed
+from torchmetrics.functional import f1, precision_recall
+
+
+def prototype(hparams):
+    seed_everything(69)
+    
+    tokenizer = Tokenizer(hparams.encoder_model)
+    collator = Collator(tokenizer)
+    datamodule = MedDataModule(
+        tokenizer, collator, hparams.data_path,
+        hparams.dataset, hparams.batch_size, 
+        hparams.num_workers,
+    )
+    
+    desc_tokens = datamodule.desc_tokens
+    num_classes = datamodule.num_classes
+    print("Finished loading data!")
+    
+    
+    if hparams.dataset == 'hoc':
+        model = MultiLabelClassifier(
+            desc_tokens, tokenizer, collator, num_classes, hparams, **vars(hparams)
+        )
+    else:
+        model = MultiClassClassifier(
+            desc_tokens, tokenizer, collator, num_classes, hparams, **vars(hparams)
+        )
+        
+    return model, datamodule, hparams
 
 def load_hparams(experiment_dir: str):
     hparams_file = experiment_dir + "/hparams.yaml"

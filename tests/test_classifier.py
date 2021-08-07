@@ -9,15 +9,17 @@ from pytorch_lightning import seed_everything
 from base_classifier import BaseClassifier
 from datamodule import MedDataModule, Collator
 from tokenizer import Tokenizer
-from mtc import MTCClassifier
-from hoc import HOCClassifier
+from multiclass import MultiClassClassifier
+from multilabel import MultiLabelClassifier
+from interact import prototype
 
 
 class TestModel():
     
     def __init__(self, model: BaseClassifier):
         self.model = model
-        self.optim = model.configure_optimizers()[0][0]
+        self.optim = model.configure_optimizers()['optimizer']
+        # self.optim = model.optimizers()
         
     def test_shape(self, batch, batch_size, n_classes):
         inputs, targets = batch
@@ -98,42 +100,33 @@ class TestModel():
 
 if __name__ == "__main__":
     
-    seed_everything(69)
-
     hparams = Namespace(
         encoder_model="bert-base-cased",
         data_path="./project/data",
-        dataset="hoc",
+        dataset="mtc",
         batch_size=2,
         num_workers=2,
         random_sampling=False,
-        nr_frozen_epochs=1,
+        num_frozen_epochs=0,
         encoder_learning_rate=1e-05,
         learning_rate=3e-05,
         tgt_txt_col="TEXT",
         tgt_lbl_col="LABEL",
+        n_lbl_attn_layer=1,
+        static_desc_emb=True,
+        weight_decay_encoder=0.05,
+        weight_decay_nonencoder=0.1,
+        label_attn_lr=0.0002,
     )
-
-    tokenizer = Tokenizer(hparams.encoder_model)
-    collator = Collator(tokenizer)
-    datamodule = MedDataModule(
-        tokenizer, collator, hparams.data_path,
-        hparams.dataset, hparams.batch_size, 
-        hparams.num_workers,
-    )
-
-    model = HOCClassifier(
-        hparams, tokenizer, collator, hparams.encoder_model,
-        hparams.batch_size, hparams.nr_frozen_epochs,
-        hparams.encoder_learning_rate, hparams.learning_rate,
-    )
+    
+    model, datamodule, hparams = prototype(hparams)
     
     datamodule.setup()
     batch = next(iter(datamodule.train_dataloader()))
     # print(batch)
     
     test_obj = TestModel(model)
-    test_obj.test_shape(batch, hparams.batch_size, model.num_classes())
+    test_obj.test_shape(batch, hparams.batch_size, model.num_classes)
     test_obj.test_params_update(batch)
     
     print("Test successful!")

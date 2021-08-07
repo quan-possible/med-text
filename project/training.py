@@ -9,8 +9,8 @@ from datetime import timedelta
 from timeit import default_timer as timer
 
 from base_classifier import BaseClassifier
-from hoc import HOCClassifier
-from mtc import MTCClassifier 
+from multilabel import MultiLabelClassifier
+from multiclass import MultiClassClassifier 
 from datamodule import MedDataModule, Collator
 from tokenizer import Tokenizer
 from utils import parse_dataset_name
@@ -43,21 +43,17 @@ def main(hparams) -> None:
     )
     
     desc_tokens = datamodule.desc_tokens
+    num_classes = datamodule.num_classes
     print("Finished loading data!")
     
     
     if hparams.dataset == 'hoc':
-        model = HOCClassifier(
-            desc_tokens, tokenizer, collator, hparams, **vars(hparams)
-            # hparams, tokenizer, collator, hparams.encoder_model,
-            # hparams.batch_size, hparams.num_frozen_epochs,
-            # hparams.encoder_learning_rate, hparams.learning_rate,
+        model = MultiLabelClassifier(
+            desc_tokens, tokenizer, collator, num_classes, hparams, **vars(hparams)
         )
     else:
-        model = MTCClassifier(
-            hparams, tokenizer, collator, hparams.encoder_model,
-            hparams.batch_size, hparams.num_frozen_epochs,
-            hparams.encoder_learning_rate, hparams.learning_rate,
+        model = MultiClassClassifier(
+            desc_tokens, tokenizer, collator, num_classes, hparams, **vars(hparams)
         )
 
     # ------------------------

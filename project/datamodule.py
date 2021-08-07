@@ -72,27 +72,31 @@ class MedDataModule(pl.LightningDataModule):
 
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.labels = None
-        self._labels_desc = None
-
+        # self.labels = None
+        # self._desc_tokens = None
+        
         if self.dataset == 'hoc':
-            self.read_csv = MedDataModule.read_hoc
-            self.num_classes = 10
-            self.labels = pd.read_csv(self.data_path / 'hoc_train.csv', \
+            self.read_csv = self.read_hoc
+            self.labels = pd.read_csv(self.data_path / f'{self.dataset}_train.csv', \
                 sep='\t', index_col=0, nrows=0).columns.tolist()
-            self._desc_tokens = self.read_desc(self.data_path,
-                                               self.labels)
+            
         else:
-            self.read_csv = MedDataModule.read_mtc
-            self.num_classes = 5
+            self.read_csv = self.read_mtc
+            self.labels = ['0','1','2','3','4']
+            
+        self._num_classes = len(self.labels)
+        self._desc_tokens = self.read_desc(
+            self.dataset, self.data_path, self.labels,
+        )
             
     @property
     def desc_tokens(self):
-        if self.dataset != 'hoc':
-            print("Nothing available!")
-            return None
         return self._desc_tokens
-
+        
+    @property
+    def num_classes(self):
+        return self._num_classes
+    
     def setup(self, stage=None):
         if stage in (None, "fit"):
             self._train_dataset = self.read_csv(self.data_path /
@@ -131,8 +135,15 @@ class MedDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
         )
         
-    def read_desc(self, data_path, labels):
-        with open(data_path / "labels.json", 'r') as f:
+    # def read_hoc_desc(self, dataset, data_path, labels):
+    #     with open(data_path / "hoc_labels.json", 'r') as f:
+    #         desc_dict = json.load(f)
+    #     desc = {"text": [desc_dict[label] for label in labels]}
+    #     desc_tokens, _ = self.collator(desc, prepare_targets=False)
+    #     return desc_tokens
+    
+    def read_desc(self, dataset, data_path, labels):
+        with open(data_path / f"{dataset}_labels.json", 'r') as f:
             desc_dict = json.load(f)
 
         desc = {"text": [desc_dict[label] for label in labels]}
@@ -162,8 +173,6 @@ class MedDataModule(pl.LightningDataModule):
     @classmethod
     def read_mtc(
         cls, file_path: str,
-        tgt_txt_col="TEXT",
-        tgt_lbl_col="LABEL"
     ) -> list:
         """ Reads a comma separated value file.
 
@@ -174,8 +183,8 @@ class MedDataModule(pl.LightningDataModule):
             - Number of classes
         """
         df = pd.read_csv(file_path, sep='\t', index_col=0,)
-        df["text"] = df[tgt_txt_col].astype(str)
-        df["labels"] = df[tgt_lbl_col] - 1      # source LABEL starts from 1
+        df["text"] = df["TEXT"].astype(str).str.replace("\n","")
+        df["labels"] = df["LABEL"]
 
         return df[['text', 'labels']].to_dict("records")
 
@@ -212,7 +221,7 @@ if __name__ == "__main__":
     hparams = Namespace(
         encoder_model="bert-base-cased",
         data_path="./project/data",
-        dataset="hoc",
+        dataset="mtc",
         batch_size=2,
         num_workers=2,
         random_sampling=False,
@@ -231,7 +240,7 @@ if __name__ == "__main__":
         hparams.num_workers,
     )
     
-    print(datamodule.labels_desc)
+    print(datamodule.desc_tokens)
     
     # datamodule.setup()
     
