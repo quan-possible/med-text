@@ -23,14 +23,14 @@ from pytorch_lightning.utilities.seed import seed_everything
 
 class MultiLabelClassifier(BaseClassifier):
 
-    def __init__(self, desc_tokens, tokenizer, collator, num_classes, hparams, static_desc_emb=False, *args, **kwargs):
-        super().__init__(desc_tokens, tokenizer, collator, num_classes, hparams, static_desc_emb, *args, **kwargs)
+    def __init__(self, desc_tokens, tokenizer, collator, num_classes, train_size, hparams, *args, **kwargs):
+        super().__init__(desc_tokens, tokenizer, collator, num_classes, train_size, hparams, *args, **kwargs)
         
     def _build_loss(self):
-        self._loss_fn = nn.BCEWithLogitsLoss(
-            # pos_weight=torch.tensor([5, 15, 15, 15, 7, 5, 12, 4, 3, 7])
-        )
-        # self._loss_fn = F1WithLogitsLoss()
+        # self._loss_fn = nn.BCEWithLogitsLoss(
+        #     # pos_weight=torch.tensor([5, 15, 15, 15, 7, 5, 12, 4, 3, 7])
+        # )
+        self._loss_fn = F1WithLogitsLoss()
 
     def _get_metrics(self, logits, labels):
         normed_logits = torch.sigmoid(logits)

@@ -27,14 +27,14 @@ class BaseClassifier(pl.LightningModule):
     :param hparams: ArgumentParser containing the hyperparameters.
     """
 
-    def __init__(self, desc_tokens, tokenizer, collator, num_classes,
-                 hparams, *args, **kwargs) -> None:
+    def __init__(self, desc_tokens, tokenizer, collator, num_classes, train_size, hparams, *args, **kwargs) -> None:
         super(BaseClassifier, self).__init__()
 
         self.desc_tokens = desc_tokens  # (batch_size, seq_len)
         self.tokenizer = tokenizer
         self.collator = collator
         self.num_classes = num_classes
+        self.train_size = train_size
 
         self.save_hyperparameters(hparams)
         
@@ -290,7 +290,7 @@ class BaseClassifier(pl.LightningModule):
         self.optimizer = optim.AdamW(param_groups, lr=self.hparams.learning_rate)
 
         # crucial to converge
-        steps_per_epoch = ceil(1303 / (self.hparams.batch_size * 2))
+        steps_per_epoch = ceil(self.train_size / (self.hparams.batch_size * 2))
         self.lr_scheduler = get_lr_schedule(
             param_groups=param_groups, encoder_indices=[0], optimizer=self.optimizer,
             scheduler_epochs=self.hparams.scheduler_epochs,

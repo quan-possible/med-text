@@ -79,10 +79,12 @@ class MedDataModule(pl.LightningDataModule):
             self.read_csv = self.read_hoc
             self.labels = pd.read_csv(self.data_path / f'{self.dataset}_train.csv', \
                 sep='\t', index_col=0, nrows=0).columns.tolist()
+            self.dims = (1303, 512, 512)
             
         else:
             self.read_csv = self.read_mtc
             self.labels = ['0','1','2','3','4']
+            self.dims = (11550, 512, 512)
             
         self._num_classes = len(self.labels)
         self._desc_tokens = self.read_desc(
@@ -97,16 +99,13 @@ class MedDataModule(pl.LightningDataModule):
     def num_classes(self):
         return self._num_classes
     
-    def setup(self, stage=None):
-        if stage in (None, "fit"):
-            self._train_dataset = self.read_csv(self.data_path /
-                                                f"{self.dataset}_train.csv")
-            self._val_dataset = self.read_csv(self.data_path /
-                                              f"{self.dataset}_val.csv")
-
-        if stage in (None, 'test'):
-            self._test_dataset = self.read_csv(self.data_path /
-                                               f"{self.dataset}_test.csv")
+    def prepare_data(self) -> None:
+        self._train_dataset = self.read_csv(self.data_path /
+                                            f"{self.dataset}_train.csv")
+        self._val_dataset = self.read_csv(self.data_path /
+                                            f"{self.dataset}_val.csv")
+        self._test_dataset = self.read_csv(self.data_path /
+                                            f"{self.dataset}_test.csv")
 
     def train_dataloader(self) -> DataLoader:
         """ Function that loads the train set. """

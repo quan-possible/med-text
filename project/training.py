@@ -44,16 +44,17 @@ def main(hparams) -> None:
     
     desc_tokens = datamodule.desc_tokens
     num_classes = datamodule.num_classes
+    train_size = datamodule.size(dim=0)
     print("Finished loading data!")
     
     
     if hparams.dataset == 'hoc':
         model = MultiLabelClassifier(
-            desc_tokens, tokenizer, collator, num_classes, hparams, **vars(hparams)
+            desc_tokens, tokenizer, collator, num_classes, train_size, hparams, **vars(hparams)
         )
     else:
         model = MultiClassClassifier(
-            desc_tokens, tokenizer, collator, num_classes, hparams, **vars(hparams)
+            desc_tokens, tokenizer, collator, num_classes, train_size, hparams, **vars(hparams)
         )
 
     # ------------------------
@@ -114,6 +115,7 @@ def main(hparams) -> None:
         gradient_clip_val=1.0,
         gpus=hparams.gpus,
         log_gpu_memory="all",
+        log_every_n_steps=hparams.batch_size,
         deterministic=True,
         check_val_every_n_epoch=1,
         fast_dev_run=False,

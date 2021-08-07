@@ -32,16 +32,17 @@ def prototype(hparams):
     
     desc_tokens = datamodule.desc_tokens
     num_classes = datamodule.num_classes
+    train_size = datamodule.size(dim=0)
     print("Finished loading data!")
     
     
     if hparams.dataset == 'hoc':
         model = MultiLabelClassifier(
-            desc_tokens, tokenizer, collator, num_classes, hparams, **vars(hparams)
+            desc_tokens, tokenizer, collator, num_classes, train_size, hparams, **vars(hparams)
         )
     else:
         model = MultiClassClassifier(
-            desc_tokens, tokenizer, collator, num_classes, hparams, **vars(hparams)
+            desc_tokens, tokenizer, collator, num_classes, train_size, hparams, **vars(hparams)
         )
         
     return model, datamodule, hparams

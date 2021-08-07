@@ -15,8 +15,8 @@ from pytorch_lightning.utilities.seed import seed_everything
 
 class MultiClassClassifier(BaseClassifier):
 
-    def __init__(self, desc_tokens, tokenizer, collator, hparams, num_classes, *args, **kwargs):
-        super().__init__(desc_tokens, tokenizer, collator, hparams, num_classes, *args, **kwargs)
+    def __init__(self, desc_tokens, tokenizer, collator, num_classes, train_size, hparams, *args, **kwargs):
+        super().__init__(desc_tokens, tokenizer, collator, num_classes, train_size, hparams, *args, **kwargs)
 
     def _build_loss(self):
         self._loss_fn = nn.CrossEntropyLoss()
