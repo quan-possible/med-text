@@ -99,7 +99,7 @@ class MedDataModule(pl.LightningDataModule):
     def num_classes(self):
         return self._num_classes
     
-    def prepare_data(self) -> None:
+    def setup(self, stage=None):
         self._train_dataset = self.read_csv(self.data_path /
                                             f"{self.dataset}_train.csv")
         self._val_dataset = self.read_csv(self.data_path /

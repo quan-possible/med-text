@@ -30,10 +30,11 @@ def main(hparams) -> None:
     """
     set_seed(hparams.seed)
     seed_everything(hparams.seed, workers=True)
+    
+    
     # ------------------------
     # 1 INIT LIGHTNING MODEL AND DATA
     # ------------------------
-
     tokenizer = Tokenizer(hparams.encoder_model)
     collator = Collator(tokenizer)
     datamodule = MedDataModule(
@@ -108,6 +109,7 @@ def main(hparams) -> None:
     # 5 INIT TRAINER
     # ------------------------
     trainer = Trainer(
+        overfit_batches=hparams.overfit_batches,
         logger=tb_logger,
         callbacks=[early_stop_callback,
                    checkpoint_callback,
@@ -161,6 +163,7 @@ if __name__ == "__main__":
         "--monitor", default="val_acc", type=str,
         help="Quantity to monitor."
     )
+    
     parser.add_argument(
         "--metric_mode",
         default="max",
@@ -168,6 +171,7 @@ if __name__ == "__main__":
         help="If we want to min/max the monitored quantity.",
         choices=["auto", "min", "max"],
     )
+    
     parser.add_argument(
         "--patience",
         default=5,
@@ -177,19 +181,20 @@ if __name__ == "__main__":
             "after which training will be stopped."
         ),
     )
+    
     parser.add_argument(
         "--min_epochs",
         default=15,
         type=int,
         help="Limits training to a minimum number of epochs",
     )
+    
     parser.add_argument(
         "--max_epochs",
         default=25,
         type=int,
         help="Limits training to a max number number of epochs",
     )
-
     # Batching
     parser.add_argument(
         "--batch_size", default=16, type=int, help="Batch size to be used."
@@ -205,7 +210,7 @@ if __name__ == "__main__":
     )
 
     # gpu args
-    parser.add_argument("--gpus", type=int, default=1, help="How many gpus")
+    parser.add_argument("--gpus", type=int, default=-1, help="How many gpus")
     parser.add_argument(
         "--val_check_interval",
         default=1.0,
@@ -240,6 +245,15 @@ if __name__ == "__main__":
         type=str,
         help=(
             "What's the newest change?"
+        ),
+    )
+    
+    parser.add_argument(
+        "--overfit_batches",
+        default=0.00,
+        type=float,
+        help=(
+            "Overfit batch"
         ),
     )
     
