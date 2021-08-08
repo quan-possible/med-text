@@ -180,6 +180,7 @@ class BaseClassifier(pl.LightningModule):
 
         # Classification head
         logits = self.classification_head(sentemb)
+        logits = self.final_fc(logits)
         
         #-------------------------
         # DESCRIPTION EMBEDDINGS WITH GENERAL ATTENTION
