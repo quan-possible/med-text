@@ -24,7 +24,7 @@ class LabelAttentionLayer(nn.Module):
         ) -> None:
         super(LabelAttentionLayer, self).__init__()
         self.batch_first = batch_first
-        self.lbl_attn = nn.MultiheadAttention(d_model, nhead, dropout=0.1)
+        self.lbl_attn = nn.MultiheadAttention(d_model,nhead, dropout=0.1, batch_first=True)
         # Implementation of Feedforward model
         self.linear1 = nn.Linear(d_model, dim_feedforward)
         self.dropout = nn.Dropout(dropout)
@@ -38,7 +38,7 @@ class LabelAttentionLayer(nn.Module):
 
         self.activation = nn.ReLU()
 
-    def forward(self, key, query):
+    def forward(self, query, key):
         r"""Pass the input through the label attention layer.
 
             Args:
@@ -50,12 +50,12 @@ class LabelAttentionLayer(nn.Module):
                 see the docs in Transformer class.
             """
         if not self.batch_first:
+            query = query.transpose(0, 1)
             key = key.transpose(0, 1)
-            desc_emb = query.transpose(0, 1)
         
         # desc_emb = self.norm1(desc_emb)
         src2, _ = self.lbl_attn(query, key, key)
-        src = desc_emb + self.dropout1(src2)
+        src = query + self.dropout1(src2)
         src = self.norm1(src)
         src2 = self.linear2(self.dropout(self.activation(self.linear1(src))))
         src = src + self.dropout2(src2)
