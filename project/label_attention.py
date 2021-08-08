@@ -38,7 +38,7 @@ class LabelAttentionLayer(nn.Module):
 
         self.activation = nn.ReLU()
 
-    def forward(self, x, desc_emb):
+    def forward(self, key, query):
         r"""Pass the input through the label attention layer.
 
             Args:
@@ -49,19 +49,19 @@ class LabelAttentionLayer(nn.Module):
             Shape:
                 see the docs in Transformer class.
             """
-        if self.batch_first:
-            x = x.transpose(0,1)
-            desc_emb = desc_emb.transpose(0,1)
+        if not self.batch_first:
+            key = key.transpose(0, 1)
+            desc_emb = query.transpose(0, 1)
         
         # desc_emb = self.norm1(desc_emb)
-        src2, _ = self.lbl_attn(desc_emb, x, x)
+        src2, _ = self.lbl_attn(query, key, key)
         src = desc_emb + self.dropout1(src2)
         src = self.norm1(src)
         src2 = self.linear2(self.dropout(self.activation(self.linear1(src))))
         src = src + self.dropout2(src2)
         src = self.norm2(src)
         
-        if self.batch_first:
+        if not self.batch_first:
             src = src.transpose(0, 1)
             
         return src
