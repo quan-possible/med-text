@@ -92,8 +92,9 @@ class BaseClassifier(pl.LightningModule):
         else:
             self.encoder_features = 768
 
-        label_attn_layer = LabelAttentionLayer(self.encoder_features)
-        self.label_attn = self._get_clones(label_attn_layer, self.hparams.n_lbl_attn_layer)
+        if self.hparams.n_lbl_attn_layer > 0:
+            label_attn_layer = LabelAttentionLayer(self.encoder_features)
+            self.label_attn = self._get_clones(label_attn_layer, self.hparams.n_lbl_attn_layer)
 
         self.classification_head = nn.Sequential(
             nn.Linear(self.encoder_features, self.encoder_features * 2),
@@ -125,7 +126,7 @@ class BaseClassifier(pl.LightningModule):
         return emb
 
     def _get_clones(self, module, N):
-        return nn.ModuleList([copy.deepcopy(module) for i in range(N)])
+        return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
     
     def forward(self, tokens_dict):
         """ Usual pytorch forward function. 
@@ -211,18 +212,27 @@ class BaseClassifier(pl.LightningModule):
         # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
         x = self._process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
         # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
-        if not self.hparams.static_desc_emb:
-            self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
+        if self.hparams.n_lbl_attn_layer > 0:
+            if not self.hparams.static_desc_emb:
+                self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
 
-        desc_emb = self.desc_emb.clone().type_as(x).expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
+            desc_emb = self.desc_emb.clone().type_as(x).expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
+            
+            output = desc_emb
+            for mod in self.label_attn:
+                output = mod(x, output)
+                
+            output = self.classification_head(output)
+            logits = self.final_fc.weight.mul(output).sum(dim=2).add(self.final_fc.bias)
+        
+        else:
+            output = x[:, 0, :]
+            output = self.classification_head(output)
+            logits = self.final_fc(output)
         
         # (batch_size, seq_len, hidden_dim)
-        output = desc_emb
-        for mod in self.label_attn:
-            output = mod(x, output)
 
-        output = self.classification_head(output)
-        logits = self.final_fc.weight.mul(output).sum(dim=2).add(self.final_fc.bias)
+
         
         #---------------------------------
         # TESTING
