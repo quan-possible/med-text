@@ -14,7 +14,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch import optim
 from torch import Tensor
 
-class F1Loss(nn.Module):
+class F1WithLogitsLoss(nn.Module):
     '''Calculate F1 score. Can work with gpu tensors
     
     The original implmentation is written by Michal Haltuf on Kaggle.
@@ -31,17 +31,12 @@ class F1Loss(nn.Module):
     - https://discuss.pytorch.org/t/calculating-precision-recall-and-f1-score-in-case-of-multi-label-classification/28265/6
     - http://www.ryanzhang.info/python/writing-your-own-loss-function-module-for-pytorch/
     '''
-
-    def __init__(self, sigmoid=False, epsilon=1e-8):
+    def __init__(self, epsilon=1e-8):
         super().__init__()
         self.epsilon = epsilon
-        self.sigmoid = sigmoid
         
     def forward(self, logits, labels):
-        if self.sigmoid:
-            logits = torch.sigmoid(logits)
-            
-        y_hat = logits.float()
+        y_hat = torch.sigmoid(logits).float()
         y = labels.float()
         
         tp = (y * y_hat).sum(dim=0)
