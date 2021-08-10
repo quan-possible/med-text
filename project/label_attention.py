@@ -1,3 +1,7 @@
+from tokenizer import Tokenizer
+from datamodule import MedDataModule, Collator
+from utils import F1WithLogitsLoss
+
 import numpy as np
 from argparse import Namespace
 from collections import defaultdict, OrderedDict
@@ -24,7 +28,7 @@ class LabelAttentionLayer(nn.Module):
         ) -> None:
         super(LabelAttentionLayer, self).__init__()
         self.batch_first = batch_first
-        self.lbl_attn = nn.MultiheadAttention(d_model,nhead, dropout=0.1, batch_first=True)
+        self.lbl_attn = nn.MultiheadAttention(d_model, nhead, dropout=0.1)
         # Implementation of Feedforward model
         self.linear1 = nn.Linear(d_model, dim_feedforward)
         self.dropout = nn.Dropout(dropout)
@@ -38,30 +42,28 @@ class LabelAttentionLayer(nn.Module):
 
         self.activation = nn.ReLU()
 
-    def forward(self, query, key):
+    def forward(self, x, desc_emb):
         r"""Pass the input through the label attention layer.
-
             Args:
                 src: the sequence to the encoder layer (required).
                 src_mask: the mask for the src sequence (optional).
                 src_key_padding_mask: the mask for the src keys per batch (optional).
-
             Shape:
                 see the docs in Transformer class.
             """
-        if not self.batch_first:
-            query = query.transpose(0, 1)
-            key = key.transpose(0, 1)
+        if self.batch_first:
+            x = x.transpose(0,1)
+            desc_emb = desc_emb.transpose(0,1)
         
         # desc_emb = self.norm1(desc_emb)
-        src2, _ = self.lbl_attn(query, key, key)
-        src = query + self.dropout1(src2)
+        src2, _ = self.lbl_attn(desc_emb, x, x)
+        src = desc_emb + self.dropout1(src2)
         src = self.norm1(src)
         src2 = self.linear2(self.dropout(self.activation(self.linear1(src))))
         src = src + self.dropout2(src2)
         src = self.norm2(src)
         
-        if not self.batch_first:
+        if self.batch_first:
             src = src.transpose(0, 1)
             
         return src

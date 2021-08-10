@@ -72,7 +72,7 @@ def load_model(experiment_dir: str, dataset, hparams, tokenizer, collator, num_c
     ]
     checkpoint_path = experiment_path / checkpoints[-1]
     
-    classifier = HOCClassifier if dataset == "hoc" else MTCClassifier
+    classifier = MultiLabelClassifier if dataset == "hoc" else MultiClassClassifier
     
     model = classifier.load_from_checkpoint(
         checkpoint_path, hparams=hparams, tokenizer=tokenizer,

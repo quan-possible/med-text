@@ -46,8 +46,8 @@ class HOC():
         pattern = set_ + '.*'
         data_dict = defaultdict(lambda: [])
 
-        for file in source_dir.rglob(pattern):
-            self._read_file(file, data_dict, file.parent.name)
+        for file_ in source_dir.rglob(pattern):
+            self._read_file(file_, data_dict, file_.parent.name)
 
         data_dict = {k: self._one_hot(v, labels) for k, v in data_dict.items()}
 
