@@ -29,11 +29,11 @@ class MultiClassClassifier(BaseClassifier):
                / (len(labels) * 1.0))
 
         # f1
-        f1_ = f1(preds, labels, num_classes=self.num_classes, average='macro')
+        f1_ = f1(preds, labels, num_classes=self.num_classes, average=self.hparams.metric_averaging)
 
         # precision and recall
         precision_, recall_ = precision_recall(
-            preds, labels, num_classes=self.num_classes, average='macro')
+            preds, labels, num_classes=self.num_classes, average=self.hparams.metric_averaging)
 
         return acc, f1_, precision_, recall_
 
