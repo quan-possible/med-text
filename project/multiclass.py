@@ -2,6 +2,7 @@
 from tokenizer import Tokenizer
 from datamodule import MedDataModule, Collator
 from base_classifier import BaseClassifier
+from utils import F1Loss
 
 from argparse import Namespace
 import numpy as np
@@ -13,13 +14,15 @@ from torchmetrics.functional import accuracy, f1, precision_recall
 from pytorch_lightning.utilities.seed import seed_everything
 
 
+
 class MultiClassClassifier(BaseClassifier):
 
     def __init__(self, desc_tokens, tokenizer, collator, num_classes, train_size, hparams, *args, **kwargs):
         super().__init__(desc_tokens, tokenizer, collator, num_classes, train_size, hparams, *args, **kwargs)
 
     def _build_loss(self):
-        self._loss_fn = nn.CrossEntropyLoss()
+        # self._loss_fn = nn.CrossEntropyLoss()
+        self._loss_fn = F1Loss()
 
     def _get_metrics(self, logits, labels):
         preds = torch.argmax(logits, dim=1)
@@ -29,11 +32,11 @@ class MultiClassClassifier(BaseClassifier):
                / (len(labels) * 1.0))
 
         # f1
-        f1_ = f1(preds, labels, num_classes=self.num_classes, average='macro')
+        f1_ = f1(preds, labels, num_classes=self.num_classes, average=self.hparams.metric_averaging)
 
         # precision and recall
         precision_, recall_ = precision_recall(
-            preds, labels, num_classes=self.num_classes, average='macro')
+            preds, labels, num_classes=self.num_classes, average=self.hparams.metric_averaging)
 
         return acc, f1_, precision_, recall_
 

@@ -3,7 +3,7 @@ from base_classifier import BaseClassifier
 from label_attention import LabelAttentionLayer
 from tokenizer import Tokenizer
 from datamodule import MedDataModule, Collator
-from utils import F1WithLogitsLoss, mask_fill
+from utils import F1Loss, mask_fill
 
 import numpy as np
 import copy
@@ -27,10 +27,8 @@ class MultiLabelClassifier(BaseClassifier):
         super().__init__(desc_tokens, tokenizer, collator, num_classes, train_size, hparams, *args, **kwargs)
         
     def _build_loss(self):
-        # self._loss_fn = nn.BCEWithLogitsLoss(
-        #     # pos_weight=torch.tensor([5, 15, 15, 15, 7, 5, 12, 4, 3, 7])
-        # )
-        self._loss_fn = F1WithLogitsLoss()
+        # self._loss_fn = nn.BCEWithLogitsLoss()
+        self._loss_fn = F1Loss(sigmoid=True)
 
     def _get_metrics(self, logits, labels):
         normed_logits = torch.sigmoid(logits)
