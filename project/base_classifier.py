@@ -208,61 +208,61 @@ class BaseClassifier(pl.LightningModule):
         # DESCRIPTION EMBEDDINGS WITH MULTIHEAD BLOCKS
         #-------------------------------------------
         
-        # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
-        x = self._process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
-        # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
-        if not self.hparams.static_desc_emb:
-            self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
-
-        desc_emb = self.desc_emb.clone().type_as(x).expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
-        
-        # (batch_size, seq_len, hidden_dim)
-        output = desc_emb
-        for mod in self.label_attn:
-            output = mod(query=output, key=x)
-
-        output = self.classification_head(output)
-        logits = self.final_fc.weight.mul(output).sum(dim=2).add(self.final_fc.bias)
-        
-        #---------------------------------
-        # TRANSFORMERS
-        #---------------------------------
-        
-        # tokens, lengths = tokens_dict['tokens'], \
-        #     tokens_dict['lengths']
-        # tokens = tokens[:, : lengths.max()]
-
-        # # When using just one GPU this should not change behavior
-        # # but when splitting batches across GPU the tokens have padding
-        # # from the entire original batch
-        # mask = lengths_to_mask(lengths, device=tokens.device)
-
-        # # Run BERT model. output is (batch_size, sequence_length, hidden_size)
-        # x = self.encoder(tokens, mask).last_hidden_state
-        
+        # # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
+        # x = self._process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
         # # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
         # if not self.hparams.static_desc_emb:
         #     self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
 
         # desc_emb = self.desc_emb.clone().type_as(x).expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
-
+        
         # # (batch_size, seq_len, hidden_dim)
-        # output = x
+        # output = desc_emb
         # for mod in self.label_attn:
-        #     output = mod(query=output, key=desc_emb)
-            
-        # # Average Pooling
-        # word_embeddings = mask_fill(
-        #     0.0, tokens, output, self.tokenizer.padding_index
-        # )
-        # sentemb = torch.sum(word_embeddings, 1)
-        # sum_mask = mask.unsqueeze(-1).expand(word_embeddings.size()
-        #                                      ).float().sum(1)
-        # sentemb = sentemb / sum_mask
+        #     output = mod(x, output)
 
-        # # Classification head
-        # logits = self.classification_head(sentemb)
-        # logits = self.final_fc(logits)
+        # output = self.classification_head(output)
+        # logits = self.final_fc.weight.mul(output).sum(dim=2).add(self.final_fc.bias)
+        
+        #---------------------------------
+        # TRANSFORMERS
+        #---------------------------------
+        
+        tokens, lengths = tokens_dict['tokens'], \
+            tokens_dict['lengths']
+        tokens = tokens[:, : lengths.max()]
+
+        # When using just one GPU this should not change behavior
+        # but when splitting batches across GPU the tokens have padding
+        # from the entire original batch
+        mask = lengths_to_mask(lengths, device=tokens.device)
+
+        # Run BERT model. output is (batch_size, sequence_length, hidden_size)
+        x = self.encoder(tokens, mask).last_hidden_state
+        
+        # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
+        if not self.hparams.static_desc_emb:
+            self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
+
+        desc_emb = self.desc_emb.clone().type_as(x).expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
+
+        # (batch_size, seq_len, hidden_dim)
+        output = x
+        for mod in self.label_attn:
+            output = mod(query=output, key=desc_emb)
+            
+        # Average Pooling
+        word_embeddings = mask_fill(
+            0.0, tokens, output, self.tokenizer.padding_index
+        )
+        sentemb = torch.sum(word_embeddings, 1)
+        sum_mask = mask.unsqueeze(-1).expand(word_embeddings.size()
+                                             ).float().sum(1)
+        sentemb = sentemb / sum_mask
+
+        # Classification head
+        logits = self.classification_head(sentemb)
+        logits = self.final_fc(logits)
 
 
         return {"logits": logits}
