@@ -54,7 +54,8 @@ def load_hparams(experiment_dir: str):
     return Namespace(**hparams)
 
 
-def load_model(experiment_dir: str, dataset, hparams, tokenizer, collator, num_classes):
+def load_model(experiment_dir: str, desc_tokens, tokenizer, collator, 
+               num_classes, train_size, hparams):
     """ Function that loads the model from an experiment folder.
     :param experiment_dir: Path to the experiment folder.
     Return:
@@ -70,27 +71,37 @@ def load_model(experiment_dir: str, dataset, hparams, tokenizer, collator, num_c
         for file in experiment_path.iterdir()
         if file.name.endswith(".ckpt")
     ]
-    checkpoint_path = experiment_path / checkpoints[-1]
+    checkpoint_path = experiment_path / checkpoints[0]
     
-    classifier = MultiLabelClassifier if dataset == "hoc" else MultiClassClassifier
+    if hparams.dataset == 'hoc':
+        model = MultiLabelClassifier(
+            desc_tokens, tokenizer, collator, num_classes, train_size, hparams, **vars(hparams)
+        )
+    else:
+        model = MultiClassClassifier(
+            desc_tokens, tokenizer, collator, num_classes, train_size, hparams, **vars(hparams)
+        )
     
-    model = classifier.load_from_checkpoint(
-        checkpoint_path, hparams=hparams, tokenizer=tokenizer,
-        collator=collator, encoder_model=hparams.encoder_model,
-        batch_size=hparams.batch_size,
-        num_frozen_epochs=hparams.num_frozen_epochs,
-        #  label_encoder,
-        encoder_learning_rate=hparams.encoder_learning_rate, 
-        learning_rate=hparams.learning_rate,
+    model = model.load_from_checkpoint(
+        checkpoint_path, 
+        desc_tokens=desc_tokens, 
+        tokenizer=tokenizer, 
+        collator=collator,
+        num_classes=num_classes, 
+        train_size=train_size, 
+        hparams=hparams
     )
 
-    
     # Make sure model is in prediction mode
     model.eval()
     model.freeze()
     return model
 
 def main(args):
+    
+    import os
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
+    
     print("Loading model...")
     hparams = load_hparams(args.experiment_dir)
     
@@ -101,11 +112,13 @@ def main(args):
         hparams.dataset, hparams.batch_size, hparams.num_workers,
     )
     
+    desc_tokens = datamodule.desc_tokens
     num_classes = datamodule.num_classes
+    train_size = datamodule.size(dim=0)
 
-    model = load_model(args.experiment_dir, hparams.dataset, 
-                       hparams, tokenizer,
-                       collator, num_classes)
+    print("Finished loading data")
+    model = load_model(args.experiment_dir, desc_tokens, tokenizer, 
+                       collator, num_classes, train_size, hparams)
     
     datamodule.setup()
     test_dataloader = datamodule.test_dataloader()
@@ -142,6 +155,7 @@ def main(args):
     print(metrics)   
 
 if __name__ == "__main__":
+    
     parser = ArgumentParser(
         description="Minimalist Transformer Classifier", add_help=True
     )

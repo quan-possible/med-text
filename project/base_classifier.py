@@ -223,6 +223,8 @@ class BaseClassifier(pl.LightningModule):
                 output = mod(x, output)
                 
             output = self.classification_head(output)
+            
+            # print(output.size())
             logits = self.final_fc.weight.mul(output).sum(dim=2).add(self.final_fc.bias)
         
         else:

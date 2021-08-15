@@ -1,7 +1,3 @@
-from tokenizer import Tokenizer
-from datamodule import MedDataModule, Collator
-from utils import F1WithLogitsLoss
-
 import numpy as np
 from argparse import Namespace
 from collections import defaultdict, OrderedDict
@@ -23,11 +19,8 @@ class LabelAttentionLayer(nn.Module):
             as (batch, seq, feature). Default: ``False``.
     """
 
-    def __init__(self, d_model, nhead=12, dim_feedforward=2048, 
-            dropout=0.5, batch_first=True, 
-        ) -> None:
+    def __init__(self, d_model, nhead=12, dim_feedforward=2048, dropout=0.5) -> None:
         super(LabelAttentionLayer, self).__init__()
-        self.batch_first = batch_first
         self.lbl_attn = nn.MultiheadAttention(d_model, nhead, dropout=0.1)
         # Implementation of Feedforward model
         self.linear1 = nn.Linear(d_model, dim_feedforward)
@@ -51,9 +44,9 @@ class LabelAttentionLayer(nn.Module):
             Shape:
                 see the docs in Transformer class.
             """
-        if self.batch_first:
-            x = x.transpose(0,1)
-            desc_emb = desc_emb.transpose(0,1)
+        # if self.batch_first:
+        x = x.transpose(0,1)
+        desc_emb = desc_emb.transpose(0,1)
         
         # desc_emb = self.norm1(desc_emb)
         src2, _ = self.lbl_attn(desc_emb, x, x)
@@ -63,7 +56,7 @@ class LabelAttentionLayer(nn.Module):
         src = src + self.dropout2(src2)
         src = self.norm2(src)
         
-        if self.batch_first:
-            src = src.transpose(0, 1)
+        # if self.batch_first:
+        src = src.transpose(0,1)
             
         return src
