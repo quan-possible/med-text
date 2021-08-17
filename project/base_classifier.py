@@ -5,13 +5,14 @@ from label_attention import LabelAttentionLayer
 
 import copy
 import logging as log
-from math import ceil
+from math import ceil,floor
 from argparse import ArgumentParser, Namespace
 from collections import OrderedDict
 from abc import abstractmethod
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import optim
 import pytorch_lightning as pl
 from transformers import AutoModel
@@ -91,7 +92,27 @@ class BaseClassifier(pl.LightningModule):
             self.encoder_features = 128
         else:
             self.encoder_features = 768
+            
+        #----------------------------
+        # CONVOLUTIONAL HEAD
+        #----------------------------
+        
+        filter_sizes = [3, 5, 7]  # Only choose odd numbers
+        self.dim_conv = int(self.encoder_features / len(filter_sizes))
+        
+        # Conv Network
+        self.conv1d_list = nn.ModuleList([
+            nn.Conv1d(in_channels=self.encoder_features,
+                      out_channels=self.dim_conv,
+                      kernel_size=size,
+                      padding=floor(size / 2))
+            for size in filter_sizes
+        ])
+        self.bn1d_list = nn.ModuleList([nn.BatchNorm1d(self.dim_conv) for _ in filter_sizes])
 
+        #----------------------------
+        # LABEL ATTENTION
+        #----------------------------
         if self.hparams.n_lbl_attn_layer > 0:
             label_attn_layer = LabelAttentionLayer(self.encoder_features)
             self.label_attn = self._get_clones(label_attn_layer, self.hparams.n_lbl_attn_layer)
@@ -141,20 +162,36 @@ class BaseClassifier(pl.LightningModule):
         # CONVOLUTIONAL HEAD
         #----------------------------
         
-        # # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
-        # x = self._process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
+        # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
+        x = self._process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
+        # print(x.size())
+        # print("nice")
+        
+        x = x.transpose(2, 1)  # (batch_size, hidden_dim, seq_len)
 
-        # x = x.transpose(2, 1)  # (batch_size, hidden_dim, seq_len)
-
-        # x_list = [F.relu(bn1d(conv1d(x))) for conv1d,
-        #           bn1d in zip(self.conv1d_list, self.bn1d_list)]
+        x_list = [F.relu(bn1d(conv1d(x))) for conv1d,
+                  bn1d in zip(self.conv1d_list, self.bn1d_list)]
 
         # x_list = [F.max_pool1d(x, kernel_size=x.size(2)) for x in x_list]
-
-        # x = torch.cat([x.squeeze(dim=2) for x in x_list], dim=1)
-
-        # logits = self.classification_head(x)
+        # print(x_list[0].size())
+        x = torch.cat([x for x in x_list], dim=1)
         
+        x = x.transpose(2, 1)
+        # print(x.size())
+
+        # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
+        if not self.hparams.static_desc_emb:
+            self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
+
+        desc_emb = self.desc_emb.clone().type_as(x).expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
+        
+        output = desc_emb
+        for mod in self.label_attn:
+            output = mod(x, output)
+            
+        output = self.classification_head(output)
+        logits = self.final_fc.weight.mul(output).sum(dim=2).add(self.final_fc.bias)
+            
         #----------------------------
         # NO HEAD
         #----------------------------
@@ -209,35 +246,35 @@ class BaseClassifier(pl.LightningModule):
         # DESCRIPTION EMBEDDINGS WITH MULTIHEAD BLOCKS
         #-------------------------------------------
         
-        # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
-        x = self._process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
-        # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
-        if self.hparams.n_lbl_attn_layer > 0:
-            if not self.hparams.static_desc_emb:
-                self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
+        # # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
+        # x = self._process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
+        # # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
+        # if self.hparams.n_lbl_attn_layer > 0:
+        #     if not self.hparams.static_desc_emb:
+        #         self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
 
-            desc_emb = self.desc_emb.clone().type_as(x).expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
+        #     desc_emb = self.desc_emb.clone().type_as(x).expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
             
-            output = desc_emb
-            for mod in self.label_attn:
-                output = mod(x, output)
+        #     output = desc_emb
+        #     for mod in self.label_attn:
+        #         output = mod(x, output)
                 
-            output = self.classification_head(output)
+        #     output = self.classification_head(output)
             
-            # print(output.size())
-            logits = self.final_fc.weight.mul(output).sum(dim=2).add(self.final_fc.bias)
+        #     # print(output.size())
+        #     logits = self.final_fc.weight.mul(output).sum(dim=2).add(self.final_fc.bias)
         
-        else:
-            output = x[:, 0, :]
-            output = self.classification_head(output)
-            logits = self.final_fc(output)
+        # else:
+        #     output = x[:, 0, :]
+        #     output = self.classification_head(output)
+        #     logits = self.final_fc(output)
         
         # (batch_size, seq_len, hidden_dim)
 
 
         
         #---------------------------------
-        # TESTING
+        # RANDOM
         #---------------------------------
         
         # tokens, lengths = tokens_dict['tokens'], \
