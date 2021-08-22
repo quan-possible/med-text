@@ -43,20 +43,6 @@ class BaseClassifier(pl.LightningModule):
     def num_classes(self):
         pass
 
-    @property
-    @abstractmethod
-    def encoder(self):
-        pass
-    
-    @property
-    @abstractmethod
-    def label_attn(self):
-        pass
-
-    @property
-    @abstractmethod
-    def classification_head(self):
-        pass
 
     @abstractmethod
     def _get_metrics(self, logits, labels):
@@ -118,7 +104,7 @@ class BaseClassifier(pl.LightningModule):
     def configure_optimizers(self):
         """ Sets different Learning rates for different parameter groups. """
         encoder_names = ['encoder']
-        label_attn = ['_label_attn']
+        label_attn = ['label_attn']
         param_groups = [
             {
                 'params': [p for n, p in self.named_parameters()

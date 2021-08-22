@@ -49,24 +49,12 @@ class HOCClassifier(BaseClassifier):
     @property
     def num_classes(self):
         return self._num_classes
-    
-    @property
-    def label_attn(self):
-        return self._label_attn
-
-    @property
-    def encoder(self):
-        return self._encoder
-
-    @property
-    def classification_head(self):
-        return self._classification_head
 
     def _build_model(self) -> None:
         """ Init BERT model + tokenizer + classification head."""
         # pass
 
-        self._encoder = AutoModel.from_pretrained(
+        self.encoder = AutoModel.from_pretrained(
             self.hparams.encoder_model, 
             # hidden_dropout_prob=0.1,
             output_hidden_states=True,
@@ -142,9 +130,9 @@ class HOCClassifier(BaseClassifier):
         #---------------------------------
         
         label_attn_layer = LabelAttentionLayer(self.encoder_features, self.hparams.num_heads)
-        self._label_attn = self._get_clones(label_attn_layer, self.hparams.n_lbl_attn_layer)
+        self.label_attn = self._get_clones(label_attn_layer, self.hparams.n_lbl_attn_layer)
         
-        self._classification_head = nn.Sequential(
+        self.classification_head = nn.Sequential(
             nn.Linear(self.encoder_features, self.encoder_features * 2),
             nn.Tanh(),
             nn.Dropout(),
