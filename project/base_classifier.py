@@ -47,7 +47,7 @@ class BaseClassifier(pl.LightningModule):
 
         if self.hparams.static_desc_emb:
             with torch.no_grad():
-                self.desc_emb = self._process_tokens(self.desc_tokens)[:, 0, :].squeeze(dim=1)
+                self.desc_emb = self.process_tokens(self.desc_tokens)[:, 0, :].squeeze(dim=1)
 
         if self.hparams.num_frozen_epochs > 0:
             self.freeze_encoder()
@@ -127,7 +127,7 @@ class BaseClassifier(pl.LightningModule):
         
         self.final_fc = nn.Linear(self.encoder_features, self.num_classes)
 
-    def _process_tokens(self, tokens_dict, type_as_tensor=None):
+    def process_tokens(self, tokens_dict, type_as_tensor=None):
         tokens, lengths = tokens_dict['tokens'], \
             tokens_dict['lengths']
         tokens = tokens[:, : lengths.max()]
@@ -162,8 +162,8 @@ class BaseClassifier(pl.LightningModule):
         # CONVOLUTIONAL HEAD
         #----------------------------
         
-        # # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
-        # x = self._process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
+        # # process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
+        # x = self.process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
         # # print(x.size())
         # # print("nice")
         
@@ -181,7 +181,7 @@ class BaseClassifier(pl.LightningModule):
 
         # # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
         # if not self.hparams.static_desc_emb:
-        #     self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
+        #     self.desc_emb = self.process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
 
         # desc_emb = self.desc_emb.clone().type_as(x).expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
         
@@ -224,12 +224,12 @@ class BaseClassifier(pl.LightningModule):
         # DESCRIPTION EMBEDDINGS WITH GENERAL ATTENTION
         #-------------------------
         
-        # # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
-        # k = self._process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
+        # # process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
+        # k = self.process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
 
         # # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
         # if not self.hparams.static_desc_emb:
-        #     self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=k)[:, 0, :].squeeze(dim=1)
+        #     self.desc_emb = self.process_tokens(self.desc_tokens, type_as_tensor=k)[:, 0, :].squeeze(dim=1)
 
         # q = self.desc_emb.clone().type_as(k).expand(k.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
 
@@ -246,12 +246,12 @@ class BaseClassifier(pl.LightningModule):
         # DESCRIPTION EMBEDDINGS WITH MULTIHEAD BLOCKS
         #-------------------------------------------
         
-        # _process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
-        x = self._process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
+        # process_tokens is defined in BaseClassifier. Simply input the tokens into BERT.
+        x = self.process_tokens(tokens_dict)  # (batch_size, seq_len, hidden_dim)
         # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
         if self.hparams.n_lbl_attn_layer > 0:
             if not self.hparams.static_desc_emb:
-                self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
+                self.desc_emb = self.process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
 
             desc_emb = self.desc_emb.clone().type_as(x).expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
             
@@ -291,7 +291,7 @@ class BaseClassifier(pl.LightningModule):
         
         # # CLS pooling for label descriptions. output shape is (num_classes, hidden_dim)
         # if not self.hparams.static_desc_emb:
-        #     self.desc_emb = self._process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
+        #     self.desc_emb = self.process_tokens(self.desc_tokens, type_as_tensor=x)[:, 0, :].squeeze(dim=1)
 
         # desc_emb = self.desc_emb.clone().type_as(x).expand(x.size(0), self.desc_emb.size(0), self.desc_emb.size(1))
 

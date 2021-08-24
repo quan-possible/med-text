@@ -51,61 +51,6 @@ class F1WithLogitsLoss(nn.Module):
         cost = (0.5 * (f1_1+f1_0)).mean()
         
         return cost
-    
-class TextAttentionHeatmap(object):
-    def __init__(self, target_dir='nice.tex', color='red') -> None:
-        super().__init__()
-        self.color = color
-        self.target_dir = Path(target_dir) if type(
-            target_dir) is str else target_dir
-        self.configure_latex()
-        
-    def configure_latex(self):
-        with open(self.target_dir, 'w') as f:
-            f.write(
-                r'''
-\documentclass[varwidth]{standalone}
-\special{papersize=210mm,297mm}
-\usepackage{color}
-\usepackage{tcolorbox}
-\usepackage{CJK}
-\usepackage{adjustbox}
-\tcbset{width=0.9\textwidth,boxrule=0pt,colback=red,arc=0pt,auto outer arc,left=0pt,right=0pt,boxsep=5pt}
-\begin{document}
-\begin{CJK*}{UTF8}{gbsn}
-                ''' + '\n'
-            )
-    
-    def __call__(self, text, attn, rescale=False):
-        assert len(text) == len(attn)
-        if rescale:
-            attn = self._rescale()
-        num_words = len(text)
-        text_cleaned = self._clean_text(text)
-        with open(self.target_dir,'w') as f:
-            colored_text = r'''{\setlength{\fboxsep}{0pt}\colorbox{white!0}{\parbox{0.9\textwidth}{''' + "\n"
-            for idx in range(num_words):
-                colored_text += "\\colorbox{%s!%s}{"%(self.color, attn[idx])+"\\strut " + text_cleaned[idx]+"} "
-            colored_text += r"\n}}}"
-            f.write(colored_text + "\n")
-            f.write(r'''\end{CJK*}
-\end{document}''')
-            
-    def _rescale(self, attn):
-        attn_arr = np.asarray(attn)
-        max_ = np.max(attn_arr)
-        min_ = np.min(attn_arr)
-        rescale = (attn_arr - min_)/(max_-min_)*100
-        return rescale.tolist()
-    
-    def _clean_text(text):
-        new_word_list = []
-        for word in text:
-            for latex_sensitive in ["\\", "%", "&", "^", "#", "_",  "{", "}"]:
-                if latex_sensitive in word:
-                    word = word.replace(latex_sensitive, '\\'+latex_sensitive)
-            new_word_list.append(word)
-        return new_word_list
         
 
 
