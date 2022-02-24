@@ -154,7 +154,7 @@ def load_model(experiment_dir: str, desc_tokens, tokenizer, collator,
     model.freeze()
     return model
 
-def main(args):
+def evaluate(args):
     
     import os
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -262,16 +262,7 @@ def interpret(args, document):
     x = x.transpose(0, 1)
     desc_emb = desc_emb.transpose(0, 1)
     
-    
-    print(x.size())
-    print(desc_emb.size())
-    print(attn_output_weights.size())
-    
     attn = attn_output_weights[0,y_pred.item(),:].tolist()
-    print("attn shape:")
-    print(len(attn))
-    print("====")
-    print(len(doc_words))
     
     heatmap_generator(doc_words, attn)
 
@@ -287,8 +278,17 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # # check test metrics
-    # main(args)
-    document = "Renal abscess in children. Three cases of renal abscesses in children are described to illustrate the variable presenting features. An additional 23 pediatric cases, reported over the past ten years, were reviewed for clinical features and therapy. Fever, loin pain, and leukocytosis were common presenting features, but less than half of all abscesses were associated with either an abnormal urinalysis or a positive urine culture. The presenting features were sometimes confused with appendicitis, peritonitis, or a Wilms tumor. An organism was identified in 17 cases - -Escherichia coli in 9 children and Staphylococcus aureus in 8 children. The majority of E. coli infections occurred in girls and the majority of S. aureus infections occurred in boys. Reflux was documented in 5 patients, and 2 children had a possible extrarenal source of infection. Antibiotics alone produced a cure in 10 children (38 %), but 16 children (62%) required a surgical procedure."
+    # evaluate(args)
+    # document = input("Enter your")
+    document = "Renal abscess in children. Three cases of renal abscesses in children are described to illustrate the variable \
+        presenting features. An additional 23 pediatric cases, reported over the past ten years, were reviewed for clinical \
+        features and therapy. Fever, loin pain, and leukocytosis were common presenting features, but less than half of \
+        all abscesses were associated with either an abnormal urinalysis or a positive urine culture. The presenting \
+        features were sometimes confused with appendicitis, peritonitis, or a Wilms tumor. An organism was identified \
+        in 17 cases - -Escherichia coli in 9 children and Staphylococcus aureus in 8 children. The majority of E. coli \
+        infections occurred in girls and the majority of S. aureus infections occurred in boys. Reflux was documented \
+        in 5 patients, and 2 children had a possible extrarenal source of infection. Antibiotics alone produced \
+        a cure in 10 children (38 %), but 16 children (62%) required a surgical procedure."
     interpret(args, document)
 
     

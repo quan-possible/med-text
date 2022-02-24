@@ -60,19 +60,19 @@ class MultiLabelClassifier(BaseClassifier):
         """
         return self._loss_fn(predictions["logits"], targets["labels"].type_as(predictions["logits"]))
     
-    def predict(self, sample: dict) -> dict:
+    def predict(self, sample: str) -> dict:
         if self.training:
             self.eval()
-
+        print(sample)
         with torch.no_grad():
-            model_input, _ = self.collator(
-                [sample], prepare_target=False)
+            sample_dict = {"text": sample}
+            model_input, _ = self.collator(sample_dict, prepare_targets=False)
             model_out = self.forward(model_input)
             logits = model_out["logits"].numpy()
+            output = np.argmax(logits, axis=1)
+            
 
-            sample["predicted_label"] = np.argmax(logits, axis=1)[0]
-
-        return sample
+        return output
 
 
 if __name__ == "__main__":
