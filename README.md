@@ -5,7 +5,7 @@
 # Fine-Tuning Pretrained Language Models with Label Attention for Explainable Biomedical Text Classification     
 
 [![Paper](http://img.shields.io/badge/paper-arxiv.1001.2234-B31B1B.svg)](https://arxiv.org/abs/2108.11809)
-![LAME](lame.png)
+![LAME](images/lame.png)
 </div>
  
 ## Description   
